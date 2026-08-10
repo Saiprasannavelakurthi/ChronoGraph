@@ -1,0 +1,235 @@
+{
+  "project": "CLOUD",
+  "organization": "acme-engineering",
+  "export_date": "2024-01-15T00:00:00Z",
+  "tickets": [
+    {
+      "ticket_id": "jira_001",
+      "key": "CLOUD-98",
+      "title": "Evaluate GCP vs AWS migration feasibility",
+      "type": "Story",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "arun_sharma",
+      "reporter": "arun_sharma",
+      "created_at": "2023-03-16T08:00:00Z",
+      "updated_at": "2023-04-05T15:00:00Z",
+      "resolved_at": "2023-04-05T15:00:00Z",
+      "description": "Conduct a comprehensive feasibility study for migrating our AWS infrastructure to GCP. Evaluate cost savings, technical risk, team readiness, and migration timeline. Deliverable: Architecture Decision Record (ADR-001).",
+      "labels": ["migration", "cloud", "architecture", "adr"],
+      "components": ["infrastructure", "platform"],
+      "story_points": 13,
+      "sprint": "Sprint-Q1-2023-W4",
+      "comments": [
+        {
+          "comment_id": "jira_c001",
+          "author": "priya_nair",
+          "timestamp": "2023-03-18T10:00:00Z",
+          "body": "I've reviewed the cost analysis. The $84k/month AWS bill is accurate and trending upward. However, migration risk is real – we must budget for at least 6 months of parallel costs during transition."
+        },
+        {
+          "comment_id": "jira_c002",
+          "author": "rohan_mehta",
+          "timestamp": "2023-03-22T14:00:00Z",
+          "body": "GKE performance spike results added to the ticket (see attachment). GKE outperforms EKS by 22% in our latency benchmarks. This significantly changes the cost-benefit calculation in favour of GCP."
+        },
+        {
+          "comment_id": "jira_c003",
+          "author": "arun_sharma",
+          "timestamp": "2023-04-05T15:00:00Z",
+          "body": "ADR-001 published and approved by CTO. Decision: MIGRATE TO GCP. Phase 1 starts Q2 2023. Closing this ticket."
+        }
+      ],
+      "linked_issues": [
+        {"type": "blocks", "key": "CLOUD-101"},
+        {"type": "blocks", "key": "CLOUD-105"}
+      ]
+    },
+    {
+      "ticket_id": "jira_002",
+      "key": "CLOUD-101",
+      "title": "Phase 1 GCP Migration: GKE cluster provisioning and authentication-service",
+      "type": "Epic",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "rohan_mehta",
+      "reporter": "arun_sharma",
+      "created_at": "2023-04-06T09:00:00Z",
+      "updated_at": "2023-05-15T12:00:00Z",
+      "resolved_at": "2023-05-15T12:00:00Z",
+      "description": "Phase 1 of the GCP migration. Scope: provision GKE cluster in us-central1, migrate authentication-service and API gateway from AWS (EKS + S3 + RDS) to GCP (GKE + GCS + Cloud SQL). Target completion: June 30, 2023.",
+      "labels": ["migration", "gcp", "gke", "phase-1", "authentication-service"],
+      "components": ["infrastructure", "auth-service", "api-gateway"],
+      "story_points": 55,
+      "sprint": "Sprint-Q2-2023",
+      "comments": [
+        {
+          "comment_id": "jira_c004",
+          "author": "rohan_mehta",
+          "timestamp": "2023-04-10T09:00:00Z",
+          "body": "GKE cluster provisioned in us-central1. Node pool: 3x n2-standard-4 nodes, autoscaling 3-10. VPC network configured with private GKE nodes."
+        },
+        {
+          "comment_id": "jira_c005",
+          "author": "vikram_patel",
+          "timestamp": "2023-04-15T14:00:00Z",
+          "body": "Authentication-service containerized and pushed to GCP Artifact Registry. Workload Identity configured. Ready for GKE deployment."
+        },
+        {
+          "comment_id": "jira_c006",
+          "author": "rohan_mehta",
+          "timestamp": "2023-05-10T10:00:00Z",
+          "body": "Authentication-service deployed to GKE staging. Latency benchmarks: p50=12ms, p99=45ms. Exceeds targets. Ready for production cutover."
+        },
+        {
+          "comment_id": "jira_c007",
+          "author": "arun_sharma",
+          "timestamp": "2023-05-15T12:00:00Z",
+          "body": "Phase 1 migration COMPLETE. Auth-service and API gateway live on GCP. AWS resources decommissioned. Actual cost: $12k migration spend, projected monthly savings: $31k. Closing epic."
+        }
+      ],
+      "linked_issues": [
+        {"type": "is blocked by", "key": "CLOUD-98"},
+        {"type": "is blocked by", "key": "SEC-055"},
+        {"type": "subtask", "key": "CLOUD-102"},
+        {"type": "subtask", "key": "CLOUD-103"},
+        {"type": "subtask", "key": "CLOUD-104"}
+      ]
+    },
+    {
+      "ticket_id": "jira_003",
+      "key": "SEC-055",
+      "title": "CRITICAL: JWT token rotation race condition in authentication-service",
+      "type": "Bug",
+      "status": "Done",
+      "priority": "Critical",
+      "assignee": "vikram_patel",
+      "reporter": "divya_krishnan",
+      "created_at": "2023-04-12T08:00:00Z",
+      "updated_at": "2023-04-13T18:00:00Z",
+      "resolved_at": "2023-04-13T18:00:00Z",
+      "description": "CRITICAL SECURITY BUG: The JWT secret rotation in auth-service has a race condition. During the rotation window (approximately 200ms), concurrent requests can authenticate with both old and new secrets, creating a window for token confusion attacks. Must be fixed before GCP production deployment.",
+      "labels": ["security", "critical", "auth-service", "jwt", "race-condition"],
+      "components": ["auth-service"],
+      "story_points": 8,
+      "sprint": "Sprint-Q2-2023-W1",
+      "comments": [
+        {
+          "comment_id": "jira_c008",
+          "author": "divya_krishnan",
+          "timestamp": "2023-04-12T08:10:00Z",
+          "body": "Root cause identified: two concurrent token validation threads read the secret value before rotation completes. Fix: implement distributed locking. I recommend Redis Redlock. Assigning to Vikram as auth-service owner."
+        },
+        {
+          "comment_id": "jira_c009",
+          "author": "vikram_patel",
+          "timestamp": "2023-04-12T09:30:00Z",
+          "body": "PR #89 raised with Redlock implementation. Tests pass. Requesting expedited review from Divya and Rohan. CVSSv3 Score: 8.1 (High)."
+        },
+        {
+          "comment_id": "jira_c010",
+          "author": "divya_krishnan",
+          "timestamp": "2023-04-13T17:30:00Z",
+          "body": "PR #89 approved and merged. Issue resolved. Regression tests added. Closing ticket."
+        }
+      ],
+      "linked_issues": [
+        {"type": "blocks", "key": "CLOUD-101"},
+        {"type": "related to", "key": "CLOUD-98"}
+      ]
+    },
+    {
+      "ticket_id": "jira_004",
+      "key": "CLOUD-102",
+      "title": "Migrate authentication-service storage: AWS S3 → Google Cloud Storage",
+      "type": "Task",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "rohan_mehta",
+      "reporter": "rohan_mehta",
+      "created_at": "2023-04-20T09:00:00Z",
+      "updated_at": "2023-05-05T19:00:00Z",
+      "resolved_at": "2023-05-05T19:00:00Z",
+      "description": "Replace all AWS S3 calls in authentication-service with Google Cloud Storage (GCS). Remove boto3 dependency. Add google-cloud-storage library. Implement GCS IAM roles for Workload Identity authentication.",
+      "labels": ["migration", "gcp", "gcs", "s3", "auth-service"],
+      "components": ["auth-service"],
+      "story_points": 13,
+      "sprint": "Sprint-Q2-2023",
+      "comments": [
+        {
+          "comment_id": "jira_c011",
+          "author": "rohan_mehta",
+          "timestamp": "2023-05-05T18:00:00Z",
+          "body": "PR #89 merged. AWS S3 fully replaced with GCS in auth-service. All integration tests pass. Closing."
+        }
+      ],
+      "linked_issues": [
+        {"type": "is part of", "key": "CLOUD-101"}
+      ]
+    },
+    {
+      "ticket_id": "jira_005",
+      "key": "CLOUD-103",
+      "title": "Provision GKE cluster – us-central1 region",
+      "type": "Task",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "rohan_mehta",
+      "reporter": "arun_sharma",
+      "created_at": "2023-04-06T09:00:00Z",
+      "updated_at": "2023-04-12T16:00:00Z",
+      "resolved_at": "2023-04-12T16:00:00Z",
+      "description": "Provision a production-grade GKE Autopilot cluster in us-central1. Configure: private nodes, VPC-native networking, Workload Identity, Cloud Armor, Binary Authorization.",
+      "labels": ["gcp", "gke", "infrastructure"],
+      "components": ["infrastructure"],
+      "story_points": 8,
+      "sprint": "Sprint-Q2-2023-W1",
+      "comments": [
+        {
+          "comment_id": "jira_c012",
+          "author": "rohan_mehta",
+          "timestamp": "2023-04-12T16:00:00Z",
+          "body": "GKE cluster provisioned. All configs applied via Terraform. Cluster health: GREEN. Closing."
+        }
+      ],
+      "linked_issues": [
+        {"type": "is part of", "key": "CLOUD-101"}
+      ]
+    },
+    {
+      "ticket_id": "jira_006",
+      "key": "CLOUD-105",
+      "title": "Team GCP training & certification plan",
+      "type": "Task",
+      "status": "In Progress",
+      "priority": "Medium",
+      "assignee": "divya_krishnan",
+      "reporter": "divya_krishnan",
+      "created_at": "2023-03-20T09:00:00Z",
+      "updated_at": "2023-05-30T10:00:00Z",
+      "resolved_at": null,
+      "description": "Develop and execute a GCP training plan for the platform engineering team. Target: GCP Professional Cloud Architect certification for senior engineers by Q3 2023. Budget approved: $15k.",
+      "labels": ["training", "gcp", "team-development"],
+      "components": ["people-ops"],
+      "story_points": 21,
+      "sprint": "Sprint-Q2-2023",
+      "comments": [
+        {
+          "comment_id": "jira_c013",
+          "author": "divya_krishnan",
+          "timestamp": "2023-03-25T11:00:00Z",
+          "body": "Raised concern to leadership: without adequate training, the GCP migration is high-risk. Proposed 3-month ramp-up. Approved by Arun."
+        },
+        {
+          "comment_id": "jira_c014",
+          "author": "divya_krishnan",
+          "timestamp": "2023-05-30T10:00:00Z",
+          "body": "Rohan Mehta and Vikram Patel enrolled in GCP Professional Cloud Architect course. Expected completion: August 2023."
+        }
+      ],
+      "linked_issues": [
+        {"type": "is blocked by", "key": "CLOUD-98"}
+      ]
+    }
+  ]
+}
