@@ -1,0 +1,88 @@
+{
+  "entities": [
+    {
+      "id": "person_karkuvel",
+      "name": "Karkuvel",
+      "type": "PERSON"
+    },
+    {
+      "id": "person_aathi",
+      "name": "Aathi",
+      "type": "PERSON"
+    },
+    {
+      "id": "project_chronograph",
+      "name": "ChronoGraph",
+      "type": "PROJECT"
+    },
+    {
+      "id": "commit_abc1234",
+      "name": "abc1234",
+      "type": "COMMIT"
+    },
+    {
+      "id": "pull_request_24",
+      "name": "#24",
+      "type": "PULL_REQUEST"
+    },
+    {
+      "id": "issue_cg_102",
+      "name": "CG-102",
+      "type": "ISSUE"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "Karkuvel",
+      "relation": "COMMITTED",
+      "target": "abc1234"
+    },
+    {
+      "source": "abc1234",
+      "relation": "BELONGS_TO",
+      "target": "ChronoGraph"
+    },
+    {
+      "source": "Karkuvel",
+      "relation": "OPENED",
+      "target": "#24"
+    },
+    {
+      "source": "Aathi",
+      "relation": "ASSIGNED_TO",
+      "target": "CG-102"
+    },
+    {
+      "source": "CG-102",
+      "relation": "PART_OF",
+      "target": "ChronoGraph"
+    }
+  ],
+  "triples": [
+    {
+      "subject": "Karkuvel",
+      "predicate": "COMMITTED",
+      "object": "abc1234"
+    },
+    {
+      "subject": "abc1234",
+      "predicate": "BELONGS_TO",
+      "object": "ChronoGraph"
+    },
+    {
+      "subject": "Karkuvel",
+      "predicate": "OPENED",
+      "object": "#24"
+    },
+    {
+      "subject": "Aathi",
+      "predicate": "ASSIGNED_TO",
+      "object": "CG-102"
+    },
+    {
+      "subject": "CG-102",
+      "predicate": "PART_OF",
+      "object": "ChronoGraph"
+    }
+  ]
+}
