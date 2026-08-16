@@ -366,9 +366,3 @@ Current pipeline run metrics recorded in `data/processed/graph_prep_summary.json
   - `ADVOCATED_FOR`: 8
   - `ASSIGNED_TO`: 3
   - `DEPRECATED`: 3
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
