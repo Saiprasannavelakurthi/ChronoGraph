@@ -1,60 +1,104 @@
 {
-  "generated_at": "2026-08-16T06:55:31.788983+00:00",
+  "generated_at": "2026-08-16T07:08:46.102982+00:00",
   "pipeline_stage": "Week 2 – Graph Preparation (Karkuvel)",
   "input_file": "data\\processed\\extracted_triples.json",
   "output_file": "data\\processed\\graph_ready_triples.json",
   "statistics": {
-    "total_input_triples": 147,
-    "valid_triples": 147,
+    "total_input_triples": 315,
+    "valid_triples": 315,
     "invalid_triples": 0,
     "validation_errors": 0,
-    "triples_after_deduplication": 147,
-    "duplicates_removed": 0,
-    "graph_ready_triples": 147
+    "triples_after_deduplication": 269,
+    "duplicates_removed": 46,
+    "graph_ready_triples": 269
   },
   "entities": {
-    "people": 7,
-    "technologies": 9,
-    "projects": 4,
-    "services": 2,
-    "issues": 1,
+    "people": 11,
+    "technologies": 53,
+    "projects": 25,
+    "services": 5,
+    "issues": 9,
     "entity_type_mention_counts": {
-      "Person": 149,
-      "Technology": 60,
-      "Other": 5,
-      "Project": 17,
-      "Database": 25,
-      "Service": 21,
-      "Issue": 5,
-      "Problem": 10,
-      "ArchitectureDecision": 2
+      "Person": 219,
+      "Technology": 164,
+      "Other": 33,
+      "Project": 73,
+      "Team": 3,
+      "Service": 11,
+      "Issue": 14,
+      "Architecture": 6,
+      "Problem": 9,
+      "ArchitectureDecision": 6
     }
   },
   "relations": {
-    "unique_relation_types": 12,
+    "unique_relation_types": 55,
     "relation_counts": {
-      "MIGRATED_TO": 60,
-      "REVIEWED": 26,
-      "RAISED_CONCERN": 18,
-      "ADVOCATED_FOR": 10,
-      "IMPLEMENTED": 10,
-      "ARGUED_AGAINST": 9,
-      "NEEDED": 4,
-      "ASSIGNED_TO": 3,
-      "DEPRECATED": 3,
+      "ADVOCATED_FOR": 54,
+      "IMPLEMENTED": 54,
+      "RELATED_TO": 26,
+      "RAISED_CONCERN": 20,
+      "COMMITTED_CODE": 13,
+      "MIGRATED_TO": 8,
+      "ASSIGNED_TO": 8,
+      "APPROVED": 7,
+      "CONFIRMED": 7,
+      "REPORTED_BUG": 6,
+      "ARGUED_AGAINST": 4,
+      "ENROLLED_IN": 4,
+      "CLOSED": 4,
+      "NEEDED": 3,
       "PLANNED": 2,
-      "RELATED_TO": 1,
-      "OPEN_TO": 1
+      "TARGETED": 2,
+      "FIXED": 2,
+      "BLOCKED_BY": 2,
+      "NEEDS_REVIEW": 2,
+      "DEPRECATED": 2,
+      "AFFECTED_BY": 2,
+      "DECIDED": 2,
+      "ADDED_DEPENDENCY": 2,
+      "HAS": 2,
+      "OPEN_TO": 1,
+      "ASSERTED_COST": 1,
+      "LEAD": 1,
+      "TARGET_DATE": 1,
+      "HAS_VULNERABILITY": 1,
+      "OWNS": 1,
+      "OPENED": 1,
+      "DEPLOYED_TO": 1,
+      "OBSERVED": 1,
+      "COMPARED_TO": 1,
+      "REPLACED_WITH": 1,
+      "REVIEWED": 1,
+      "REPLACES": 1,
+      "REMOVED_DEPENDENCY": 1,
+      "OUTPERFORMS": 1,
+      "IS_AFFECTED_BY": 1,
+      "RECOMMENDED": 1,
+      "READ_SECRET_BEFORE_ROTATION": 1,
+      "OWNED_BY": 1,
+      "RESOLVED": 1,
+      "ADDED": 1,
+      "REMOVED": 1,
+      "REPLACED": 1,
+      "INTEGRATED_WITH": 1,
+      "PASSED_TESTS": 1,
+      "CONFIGURED": 1,
+      "LOCATED_IN": 1,
+      "CHECKED_HEALTH": 1,
+      "IS_PROVISIONED": 1,
+      "IS_USED": 1,
+      "EXPECTED_COMPLETION": 1
     }
   },
   "sources": {
-    "slack": 56,
-    "github": 40,
-    "jira": 51,
+    "slack": 74,
+    "github": 93,
+    "jira": 102,
     "by_source": {
-      "slack": 56,
-      "github": 40,
-      "jira": 51
+      "slack": 74,
+      "github": 93,
+      "jira": 102
     }
   },
   "date_range": {
@@ -62,16 +106,247 @@
     "latest": "2023-05-30T10:00:00+00:00"
   },
   "validation_report": {
-    "total_input": 147,
-    "valid_count": 147,
+    "total_input": 315,
+    "valid_count": 315,
     "invalid_count": 0,
     "error_count": 0,
     "errors": []
   },
   "deduplication_report": {
-    "input_count": 147,
-    "duplicate_count": 0,
-    "unique_count": 147,
-    "duplicates": []
+    "input_count": 315,
+    "duplicate_count": 46,
+    "unique_count": 269,
+    "duplicates": [
+      {
+        "kept_triple_id": "e74209a8-8798-4192-8a2d-da30b9b8f4ef",
+        "dropped_triple_id": "21a98fbe-d787-4bf8-ac48-ca143a5cfbef",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "e74209a8-8798-4192-8a2d-da30b9b8f4ef",
+        "dropped_triple_id": "45d42912-f3ae-4603-be6d-f5ce8d4a2822",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "e74209a8-8798-4192-8a2d-da30b9b8f4ef",
+        "dropped_triple_id": "8016dd2d-08dc-4e40-b272-d0f957c6054b",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "e74209a8-8798-4192-8a2d-da30b9b8f4ef",
+        "dropped_triple_id": "8b8342f9-7c68-4e12-a445-a9298850bdc2",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "e74209a8-8798-4192-8a2d-da30b9b8f4ef",
+        "dropped_triple_id": "c83adecf-22cd-48dc-9d9f-b60db0d348f8",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "e74209a8-8798-4192-8a2d-da30b9b8f4ef",
+        "dropped_triple_id": "2c472982-35bd-45ac-b2dc-3d6d4c5e7717",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "e74209a8-8798-4192-8a2d-da30b9b8f4ef",
+        "dropped_triple_id": "a2f8dd3b-040c-4809-9b8c-809869b90f0e",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "8f09d435-d297-48ee-bfa2-7136e38e3bc2",
+        "dropped_triple_id": "7e07a28c-7d85-442f-bfee-cc1e54b40999",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "1b613ca9-2a50-441d-beea-3cf1c0c3b391",
+        "dropped_triple_id": "f1d948fa-0b4d-4071-ba41-3fe9a45762c9",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "35088ad1-a17d-48af-afd1-e69648ffdd19",
+        "dropped_triple_id": "bd244112-a654-46ce-95c8-43340f428c7a",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "8f09d435-d297-48ee-bfa2-7136e38e3bc2",
+        "dropped_triple_id": "42578859-4f7f-4451-af0a-2ad421570c94",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "1b613ca9-2a50-441d-beea-3cf1c0c3b391",
+        "dropped_triple_id": "6b056d40-ce95-41ef-b1d0-45c6b06b0de3",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "35088ad1-a17d-48af-afd1-e69648ffdd19",
+        "dropped_triple_id": "9b8b5a1b-5e12-47e5-a36b-47d211c0148e",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "30e7e440-cf83-4eed-8e4b-d4bb3d34bdb0",
+        "dropped_triple_id": "77cfbbfc-d579-41b8-9238-f86cfbab8863",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "30e7e440-cf83-4eed-8e4b-d4bb3d34bdb0",
+        "dropped_triple_id": "61c71aca-6c79-4785-af4a-7b0f96512676",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "30e7e440-cf83-4eed-8e4b-d4bb3d34bdb0",
+        "dropped_triple_id": "44209ee0-00ca-4762-a82f-51007cea8652",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "30e7e440-cf83-4eed-8e4b-d4bb3d34bdb0",
+        "dropped_triple_id": "7ca414f2-abd7-47fa-a132-56a0ceed095b",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "30e7e440-cf83-4eed-8e4b-d4bb3d34bdb0",
+        "dropped_triple_id": "0ea09281-07ee-4905-9a99-319cd51605f0",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "30e7e440-cf83-4eed-8e4b-d4bb3d34bdb0",
+        "dropped_triple_id": "c68fdc9a-414d-4503-82b2-04eda00d406c",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "30e7e440-cf83-4eed-8e4b-d4bb3d34bdb0",
+        "dropped_triple_id": "3d08e9db-814c-4f2f-83d2-f9365c780a07",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "30e7e440-cf83-4eed-8e4b-d4bb3d34bdb0",
+        "dropped_triple_id": "961be7c4-bb60-47e8-aa70-f60c301f023f",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "30e7e440-cf83-4eed-8e4b-d4bb3d34bdb0",
+        "dropped_triple_id": "ff285f86-330e-43ea-b654-51e08ce1d68d",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "30e7e440-cf83-4eed-8e4b-d4bb3d34bdb0",
+        "dropped_triple_id": "236b7408-be73-44d0-8279-1e05ff60e0ec",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "30e7e440-cf83-4eed-8e4b-d4bb3d34bdb0",
+        "dropped_triple_id": "d00b04dd-5bd3-4cd1-bda6-5efb2dc92ed3",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "30e7e440-cf83-4eed-8e4b-d4bb3d34bdb0",
+        "dropped_triple_id": "3b82d6f6-e65a-4f01-9b24-0b0e8049c936",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "30e7e440-cf83-4eed-8e4b-d4bb3d34bdb0",
+        "dropped_triple_id": "cdda0cbe-8798-4b21-a636-7ad18766ea36",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "31889e62-c77a-490b-bfe1-c6b928a5fa3c",
+        "dropped_triple_id": "f66dbcfe-359f-4750-9807-560681f02659",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "c2dabceb-4fb4-4e0b-a5bc-f7fac458712c",
+        "dropped_triple_id": "7d755e97-30d4-4dad-b548-68a1da862a0e",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "ae0e674f-dcd4-4e9d-a564-9c3442751bdf",
+        "dropped_triple_id": "f3fde27f-12f1-472c-acca-3866cd33fbc4",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "0df5370b-65b3-4bc7-ae12-fae2a8fbc182",
+        "dropped_triple_id": "60f90912-3600-4f29-8a9f-ef10d4818279",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "517a9234-861b-4011-94a1-92269441eaf0",
+        "dropped_triple_id": "5176e44b-9175-4029-bd53-988708200476",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "31889e62-c77a-490b-bfe1-c6b928a5fa3c",
+        "dropped_triple_id": "3edda90e-4e08-4b80-94e4-ffd076465c90",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "c2dabceb-4fb4-4e0b-a5bc-f7fac458712c",
+        "dropped_triple_id": "b606d284-908b-4de2-95aa-d9867d8b284c",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "ae0e674f-dcd4-4e9d-a564-9c3442751bdf",
+        "dropped_triple_id": "7efe777c-981a-4edb-8845-f2d1e4539dec",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "a9460a07-1147-4b25-9173-76afb18993c9",
+        "dropped_triple_id": "a77231a3-78ff-4601-b24a-70d410c03918",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "6fa0373e-326e-4c8c-8735-466e2dc0d1c8",
+        "dropped_triple_id": "a67db042-496e-455c-b970-35e13c8484c6",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "b15c687e-e6b7-4e55-931d-410a5207fea0",
+        "dropped_triple_id": "dc361b0e-5ae0-4c07-af24-b0a6987d70b1",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "b9ef04f2-c6a0-4b61-a307-39b38a2db13b",
+        "dropped_triple_id": "269b94aa-b91d-4230-92b6-fa6193a31926",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "a9460a07-1147-4b25-9173-76afb18993c9",
+        "dropped_triple_id": "e972f9c3-d6b7-459b-aa02-470aaac363f3",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "6fa0373e-326e-4c8c-8735-466e2dc0d1c8",
+        "dropped_triple_id": "7f9c8ef8-763a-4bc6-b1c1-5937c950f074",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "b15c687e-e6b7-4e55-931d-410a5207fea0",
+        "dropped_triple_id": "0d5bfa82-05a0-43c2-91c3-82d891084586",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "b9ef04f2-c6a0-4b61-a307-39b38a2db13b",
+        "dropped_triple_id": "fc700037-b16f-46ea-8423-1f5656f7308f",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "a9460a07-1147-4b25-9173-76afb18993c9",
+        "dropped_triple_id": "17577825-4128-4e2d-96e6-8170fc0dee08",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "6fa0373e-326e-4c8c-8735-466e2dc0d1c8",
+        "dropped_triple_id": "2b7f7aea-9d82-4ac6-a72e-faeac2ad9974",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "b15c687e-e6b7-4e55-931d-410a5207fea0",
+        "dropped_triple_id": "b3a9d55e-bc6b-4422-8dc2-b734fd02f185",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      },
+      {
+        "kept_triple_id": "b9ef04f2-c6a0-4b61-a307-39b38a2db13b",
+        "dropped_triple_id": "d932192d-eed7-405a-b6c9-9f91eed79fe1",
+        "reason": "Duplicate key; dropped lower/equal confidence (0.900 <= 0.900)"
+      }
+    ]
   }
 }
