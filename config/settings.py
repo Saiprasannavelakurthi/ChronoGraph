@@ -122,6 +122,16 @@ class Settings(BaseSettings):
     def extracted_triples_path(self) -> Path:
         return self.processed_data_dir / "extracted_triples.json"
 
+    @property
+    def graph_ready_triples_path(self) -> Path:
+        """Week 2 graph-ready output (consumed by Saiprasanna's Neo4j module)."""
+        return self.processed_data_dir / "graph_ready_triples.json"
+
+    @property
+    def graph_prep_summary_path(self) -> Path:
+        """Week 2 graph preparation summary report."""
+        return self.processed_data_dir / "graph_prep_summary.json"
+
     @model_validator(mode="after")
     def apply_llm_model_override(self) -> Settings:
         if self.llm_model:

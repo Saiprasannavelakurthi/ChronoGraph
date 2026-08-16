@@ -269,3 +269,131 @@ async def get_triples(
         "returned": len(triples),
         "triples": triples,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Week 2 endpoints – Graph-Ready Data (Karkuvel's module)
+# ─────────────────────────────────────────────────────────────────────────────
+# These endpoints serve / trigger Karkuvel's graph preparation pipeline.
+# They do NOT connect to Neo4j; they expose the graph_ready_triples.json
+# file that Saiprasanna's Neo4j module will consume.
+
+
+@app.get(
+    "/api/v1/graph-ready",
+    tags=["Week 2 – Graph Data"],
+    summary="Read graph-ready triples (Week 2 output)",
+)
+async def get_graph_ready(
+    limit: int = 50,
+    source: str = "",
+    relation: str = "",
+    subject: str = "",
+) -> Dict[str, Any]:
+    """
+    Return records from graph_ready_triples.json with optional filters.
+
+    This file is produced by Karkuvel's Week 2 graph preparation pipeline
+    (run POST /api/v1/prepare-graph or 'python main.py --prepare-graph').
+
+    Query params
+    ────────────
+    limit    : Max records to return (0 = all, default 50).
+    source   : Filter by source system (slack / github / jira).
+    relation : Filter by relation label (e.g. ADVOCATED_FOR).
+    subject  : Filter by canonical subject name (partial, case-insensitive).
+    """
+    graph_ready_path = settings.graph_ready_triples_path
+    if not graph_ready_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "graph_ready_triples.json not found. "
+                "Run POST /api/v1/prepare-graph or 'python main.py --prepare-graph' first."
+            ),
+        )
+
+    with open(graph_ready_path, "r", encoding="utf-8") as fh:
+        triples: List[Dict[str, Any]] = json.load(fh)
+
+    # Apply optional filters
+    if source:
+        triples = [t for t in triples if t.get("source", "").lower() == source.lower()]
+    if relation:
+        triples = [t for t in triples if t.get("relation", "").upper() == relation.upper()]
+    if subject:
+        triples = [
+            t for t in triples
+            if subject.lower() in t.get("subject", "").lower()
+        ]
+
+    total = len(triples)
+    if limit > 0:
+        triples = triples[:limit]
+
+    return {
+        "total_matching": total,
+        "returned": len(triples),
+        "source_file": str(graph_ready_path),
+        "triples": triples,
+    }
+
+
+@app.post(
+    "/api/v1/prepare-graph",
+    tags=["Week 2 – Graph Data"],
+    summary="Run the Week 2 graph preparation pipeline",
+)
+async def prepare_graph() -> Dict[str, Any]:
+    """
+    Execute Karkuvel's graph preparation pipeline:
+
+    1. Load extracted_triples.json (Week 1 output).
+    2. Validate all triples against the graph schema.
+    3. Normalise entity names, relation labels, and timestamps.
+    4. Deduplicate using deterministic composite-key logic.
+    5. Write graph_ready_triples.json and graph_prep_summary.json.
+
+    Run /api/v1/ingest and /api/v1/extract first to generate the input.
+    This endpoint does NOT connect to Neo4j.
+    """
+    if not settings.extracted_triples_path.exists():
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "extracted_triples.json not found. "
+                "Run POST /api/v1/extract first."
+            ),
+        )
+
+    try:
+        from src.graph_prep.pipeline import GraphPrepPipeline
+
+        pipeline = GraphPrepPipeline(
+            input_path=settings.extracted_triples_path,
+            output_path=settings.graph_ready_triples_path,
+            summary_path=settings.graph_prep_summary_path,
+        )
+        result = pipeline.run()
+        summary = result["summary"]
+        stats = summary["statistics"]
+
+        return {
+            "status": "success",
+            "total_input_triples": stats["total_input_triples"],
+            "valid_triples": stats["valid_triples"],
+            "invalid_triples": stats["invalid_triples"],
+            "duplicates_removed": stats["duplicates_removed"],
+            "graph_ready_triples": stats["graph_ready_triples"],
+            "output_file": str(settings.graph_ready_triples_path),
+            "summary_file": str(settings.graph_prep_summary_path),
+            "date_range": summary["date_range"],
+            "entities": summary["entities"],
+            "sources": summary["sources"],
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("prepare-graph endpoint error: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+

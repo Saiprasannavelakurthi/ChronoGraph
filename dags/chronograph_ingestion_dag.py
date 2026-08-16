@@ -1,7 +1,7 @@
 """
 dags/chronograph_ingestion_dag.py
 ──────────────────────────────────
-Airflow DAG for ChronoGraph Week 1: Data Ingestion & Triple Extraction.
+Airflow DAG for ChronoGraph Week 1 + Week 2 (Karkuvel's graph preparation).
 
 Pipeline
 ────────
@@ -27,14 +27,24 @@ save_normalized_events_task ← writes data/processed/normalized_events.json
 extract_triples_task     ← TemporalTripleExtractor: LLM or fallback
     │
     ▼
+prepare_graph_data_task  ← Karkuvel: validate + normalize + deduplicate
+    │                        writes graph_ready_triples.json
+    ▼
 end_task
 
 Week 1 scope:
   ✅ All ingestion tasks
   ✅ Preprocessing/normalisation
   ✅ Triple extraction
-  ❌ Neo4j graph construction (Week 2)
-  ❌ Temporal RAG retrieval (Week 3+)
+
+Week 2 scope (Karkuvel – Data Integration & Graph-Ready Pipeline):
+  ✅ prepare_graph_data_task: validate, normalize & deduplicate triples
+  ✅ Outputs graph_ready_triples.json for Saiprasanna's Neo4j module
+
+Out of scope (other team members):
+  ❌ Neo4j graph construction (Saiprasanna – Week 2)
+  ❌ Temporal RAG retrieval (Vembarasan/Nagarajan – Week 3+)
+  ❌ React/UI/visualization (Vembarasan/Nagarajan)
 
 Setup
 ─────
@@ -277,6 +287,52 @@ def task_extract_triples(**context) -> dict:
     }
 
 
+def task_prepare_graph_data(**context) -> dict:
+    """
+    Week 2 Task (Karkuvel): Validate, normalize & deduplicate extracted triples.
+
+    Reads  : data/processed/extracted_triples.json
+    Writes :
+        data/processed/graph_ready_triples.json  (Neo4j-ready contract)
+        data/processed/graph_prep_summary.json   (stats + audit log)
+
+    This task does NOT connect to Neo4j.  Its output file is the
+    integration contract for Saiprasanna's Neo4j loading module.
+    """
+    settings = _get_settings()
+    from src.graph_prep.pipeline import GraphPrepPipeline
+
+    if not settings.extracted_triples_path.exists():
+        raise FileNotFoundError(
+            f"extracted_triples.json not found at {settings.extracted_triples_path}. "
+            "Ensure extract_triples task ran successfully."
+        )
+
+    pipeline = GraphPrepPipeline(
+        input_path=settings.extracted_triples_path,
+        output_path=settings.graph_ready_triples_path,
+        summary_path=settings.graph_prep_summary_path,
+    )
+    result = pipeline.run()
+    stats = result["summary"]["statistics"]
+
+    logger.info(
+        "Airflow [prepare_graph_data]: %d input → %d graph-ready (%d duplicates removed, %d invalid)",
+        stats["total_input_triples"],
+        stats["graph_ready_triples"],
+        stats["duplicates_removed"],
+        stats["invalid_triples"],
+    )
+    return {
+        "total_input_triples": stats["total_input_triples"],
+        "graph_ready_triples": stats["graph_ready_triples"],
+        "duplicates_removed": stats["duplicates_removed"],
+        "invalid_triples": stats["invalid_triples"],
+        "output_path": str(settings.graph_ready_triples_path),
+        "summary_path": str(settings.graph_prep_summary_path),
+    }
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # DAG definition
 # ─────────────────────────────────────────────────────────────────────────────
@@ -285,13 +341,14 @@ with DAG(
     dag_id="chronograph_week1_ingestion",
     default_args=DEFAULT_ARGS,
     description=(
-        "ChronoGraph Week 1: Ingest enterprise data (Slack/GitHub/Jira), "
-        "normalise events, and extract temporal knowledge-graph triples."
+        "ChronoGraph Week 1 + Week 2 (Karkuvel): Ingest enterprise data "
+        "(Slack/GitHub/Jira), normalise events, extract temporal knowledge-graph "
+        "triples, then validate/normalise/deduplicate for graph-ready output."
     ),
     schedule_interval="@daily",          # run daily; trigger manually for demo
     start_date=datetime(2024, 1, 1),
     catchup=False,
-    tags=["chronograph", "week1", "ingestion", "extraction"],
+    tags=["chronograph", "week1", "week2", "ingestion", "extraction", "graph-prep"],
     max_active_runs=1,
 ) as dag:
 
@@ -345,7 +402,7 @@ def run_pipeline_standalone() -> None:
     Used by ``python main.py --run-all`` and for CI/CD environments
     where Airflow may not be installed.
     """
-    logger.info("=== ChronoGraph Week 1 Pipeline (Standalone) ===")
+    logger.info("=== ChronoGraph Week 1 + Week 2 Pipeline (Standalone) ===")
 
     steps = [
         ("load_slack",           task_load_slack),
@@ -353,6 +410,7 @@ def run_pipeline_standalone() -> None:
         ("load_jira",            task_load_jira),
         ("preprocess_normalize", task_preprocess_normalize),
         ("extract_triples",      task_extract_triples),
+        ("prepare_graph_data",   task_prepare_graph_data),   # Week 2 (Karkuvel)
     ]
 
     results = {}
