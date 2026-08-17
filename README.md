@@ -1,45 +1,56 @@
 # ChronoGraph
-## Week 1 – Neo4j & Temporal Graph Setup
 
-### Member
-**Velakurthi Saiprasanna**
-
-### Module
-**Neo4j Graph Database & Temporal Retrieval**
+## Week 1 – Neo4j Setup
 
 ### Completed Work
 
-- Set up Neo4j Desktop and created the **ChronoGraph** local instance.
-- Configured and verified the Neo4j `neo4j` database.
-- Set up a **Python 3.11 virtual environment** for the project.
-- Installed the Neo4j Python driver and `python-dotenv`.
-- Configured Neo4j connection details using environment variables in `.env`.
-- Added `.gitignore` to protect `.env`, `venv`, and Python cache files.
-- Created a Python script to test the connection between the application and Neo4j.
-- Successfully established the **Python → Neo4j** connection.
-- Created the initial ChronoGraph structure with:
-  - Person nodes
-  - Technology nodes
-  - Relationships between entities
-- Tested the basic graph using Cypher queries in Neo4j.
+- Set up Neo4j Desktop and created the ChronoGraph database.
+- Set up Python virtual environment.
+- Installed Neo4j Python Driver and python-dotenv.
+- Connected Python with Neo4j successfully.
+- Created basic Person and Technology nodes.
+- Created relationships between nodes.
+- Tested the graph using Cypher queries.
 
-### Technologies Used
+### Technologies
 
-- Python 3.11
-- Neo4j Desktop
-- Neo4j Python Driver
+- Python
+- Neo4j
 - Cypher
 - python-dotenv
 - Git & GitHub
 
+---
+
+## Week 2 – Temporal Graph
+
+### Completed Work
+
+- Added timestamps to graph relationships.
+- Created temporal relationships between people and technologies.
+- Created `temporal_queries.py`.
+- Retrieved all events from the graph.
+- Retrieved events after a specific date.
+- Retrieved Rahul's history.
+- Tested temporal queries in Neo4j Browser and Python.
+
+### Temporal Events
+
+| Person | Relationship | Technology | Date |
+|---|---|---|---|
+| Rahul | COMMITTED_CODE | AWS | 2026-08-10 |
+| Priya | ADVOCATED_FOR | GCP | 2026-08-11 |
+| Rahul | ARGUED_AGAINST | GCP | 2026-08-12 |
+
 ### Project Structure
 
 ```text
-backend/
-├── neo4j_connection.py
-└── create_graph.py
-
-data/
-.env
-.gitignore
-README.md
+ChronoGraph/
+├── backend/
+│   ├── neo4j_connection.py
+│   ├── create_graph.py
+│   └── temporal_queries.py
+├── data/
+├── .env
+├── .gitignore
+└── README.md
