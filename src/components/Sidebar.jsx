@@ -12,7 +12,7 @@ export default function Sidebar({ conversations, activeId, onSelect, onNewChat, 
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-signal-400 to-pulse-500">
           <Sparkles size={16} className="text-ink-950" strokeWidth={2.5} />
         </div>
-        <span className="font-display text-[15px] font-semibold tracking-tight">Nimbus</span>
+        <span className="font-display text-[15px] font-semibold tracking-tight">ChronoGraph</span>
       </div>
 
       {/* New chat */}
@@ -49,15 +49,7 @@ export default function Sidebar({ conversations, activeId, onSelect, onNewChat, 
             <span className="shrink-0 text-[11px] text-ink-600">{c.timestamp}</span>
           </button>
         ))}
-      </nav>
-
-      {/* Footer */}
-      <div className="border-t border-ink-800 px-3 py-3">
-        <button className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-mist-300 transition-colors hover:bg-ink-900 hover:text-mist-100">
-          <Settings size={15} />
-          Settings
-        </button>
-      </div>
+       </nav>
     </aside>
   );
 }

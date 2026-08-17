@@ -46,7 +46,7 @@ export default function InputBar({ onSend, disabled }) {
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           rows={1}
-          placeholder="Message Nimbus..."
+          placeholder="Message ChronoGraph..."
           className="scroll-thin max-h-40 flex-1 resize-none bg-transparent py-1.5 text-[14px] leading-relaxed text-ink-900 placeholder:text-ink-600/60 focus:outline-none"
         />
 
@@ -60,7 +60,7 @@ export default function InputBar({ onSend, disabled }) {
         </button>
       </div>
       <p className="mx-auto mt-2 max-w-2xl text-center text-[11px] text-ink-600/70">
-        Nimbus can make mistakes. This is a UI scaffold — replies are simulated.
+        ChronoGraph can make mistakes. This is a UI scaffold — replies and the subgraph are simulated.
       </p>
     </div>
   );

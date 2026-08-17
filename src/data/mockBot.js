@@ -41,7 +41,7 @@ export const INITIAL_MESSAGES = [
     id: "m1",
     role: "assistant",
     content:
-      "Hi, I'm Nimbus. Ask me anything, or try one of the prompts below to see the interface in action.",
+      "Hi, I'm ChronoGraph. Ask me anything — each reply also adds a node to the subgraph timeline on the right, so you can see how the conversation's entities connect over time.",
     time: "9:12 AM",
   },
 ];
