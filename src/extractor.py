@@ -2,6 +2,7 @@ import json
 import re
 import logging
 from typing import Optional, Dict, Any
+from src.errors import GraphExtractionError
 from src.config import Config
 from src.models import GraphExtractionResult, Entity, Relationship, GraphTriple, RelationshipType
 from src.prompts import GRAPH_EXTRACTION_SYSTEM_PROMPT, GRAPH_EXTRACTION_USER_PROMPT
@@ -29,28 +30,33 @@ class GraphExtractor:
         """
         self.llm = llm or Config.get_llm()
 
-    def extract(self, text: str) -> GraphExtractionResult:
+    def extract(self, text: str, source: Optional[str] = None) -> GraphExtractionResult:
         """
         Main extraction entry point.
         Processes enterprise text and returns a structured GraphExtractionResult.
+        
+        Args:
+            text (str): Input text content.
+            source (str, optional): Enterprise data source type (e.g. 'slack', 'github', 'jira').
         """
         cleaned_input = clean_text(text)
         if not cleaned_input:
             logger.info("Empty or whitespace-only text provided for extraction.")
             return GraphExtractionResult(entities=[], relationships=[], triples=[])
 
-        user_prompt = GRAPH_EXTRACTION_USER_PROMPT.format(text=cleaned_input)
+        source_str = source.upper() if source else "GENERAL"
+        user_prompt = GRAPH_EXTRACTION_USER_PROMPT.format(text=cleaned_input, source=source_str)
 
         try:
             raw_response = self._call_llm(user_prompt)
-            result = self._parse_llm_response(raw_response)
         except Exception as e:
-            logger.error(f"Error during graph extraction LLM processing: {e}")
-            # Return empty structured result gracefully on error
-            return GraphExtractionResult(entities=[], relationships=[], triples=[])
+            logger.error(f"Error during graph extraction LLM API processing: {e}")
+            raise GraphExtractionError(f"LLM extraction API call failed: {e}", original_error=e)
+
+        result = self._parse_llm_response(raw_response)
 
         # Post-process, normalize, and deduplicate
-        processed_result = self._post_process(result)
+        processed_result = self.post_process(result)
         return processed_result
 
     def _call_llm(self, prompt: str) -> str:
@@ -100,9 +106,9 @@ class GraphExtractor:
 
         return GraphExtractionResult.model_validate(data)
 
-    def _post_process(self, result: GraphExtractionResult) -> GraphExtractionResult:
+    def post_process(self, result: GraphExtractionResult) -> GraphExtractionResult:
         """
-        Normalize entity names/IDs, deduplicate entities, relationships, and triples.
+        Public method to normalize entity names/IDs, deduplicate entities, relationships, and triples.
         Ensure missing triple objects are auto-generated from relationships.
         """
         # Deduplicate entities
@@ -176,3 +182,6 @@ class GraphExtractor:
             relationships=rels,
             triples=triples,
         )
+
+    # Backward compatible alias for private post_process
+    _post_process = post_process

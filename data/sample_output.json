@@ -1,19 +1,19 @@
 {
   "entities": [
     {
-      "id": "person_karkuvel",
-      "name": "Karkuvel",
-      "type": "PERSON"
-    },
-    {
       "id": "person_aathi",
       "name": "Aathi",
       "type": "PERSON"
     },
     {
-      "id": "project_chronograph",
+      "id": "person_karkuvel",
+      "name": "Karkuvel",
+      "type": "PERSON"
+    },
+    {
+      "id": "repository_chronograph",
       "name": "ChronoGraph",
-      "type": "PROJECT"
+      "type": "REPOSITORY"
     },
     {
       "id": "commit_abc1234",
@@ -33,14 +33,14 @@
   ],
   "relationships": [
     {
+      "source": "Aathi",
+      "relation": "MENTIONED",
+      "target": "Karkuvel"
+    },
+    {
       "source": "Karkuvel",
       "relation": "COMMITTED",
       "target": "abc1234"
-    },
-    {
-      "source": "abc1234",
-      "relation": "BELONGS_TO",
-      "target": "ChronoGraph"
     },
     {
       "source": "Karkuvel",
@@ -49,25 +49,30 @@
     },
     {
       "source": "Aathi",
-      "relation": "ASSIGNED_TO",
-      "target": "CG-102"
+      "relation": "REVIEWED",
+      "target": "#24"
     },
     {
-      "source": "CG-102",
-      "relation": "PART_OF",
-      "target": "ChronoGraph"
+      "source": "Aathi",
+      "relation": "MERGED",
+      "target": "#24"
+    },
+    {
+      "source": "Aathi",
+      "relation": "ASSIGNED_TO",
+      "target": "CG-102"
     }
   ],
   "triples": [
     {
+      "subject": "Aathi",
+      "predicate": "MENTIONED",
+      "object": "Karkuvel"
+    },
+    {
       "subject": "Karkuvel",
       "predicate": "COMMITTED",
       "object": "abc1234"
-    },
-    {
-      "subject": "abc1234",
-      "predicate": "BELONGS_TO",
-      "object": "ChronoGraph"
     },
     {
       "subject": "Karkuvel",
@@ -76,13 +81,38 @@
     },
     {
       "subject": "Aathi",
-      "predicate": "ASSIGNED_TO",
-      "object": "CG-102"
+      "predicate": "REVIEWED",
+      "object": "#24"
     },
     {
-      "subject": "CG-102",
-      "predicate": "PART_OF",
-      "object": "ChronoGraph"
+      "subject": "Aathi",
+      "predicate": "MERGED",
+      "object": "#24"
+    },
+    {
+      "subject": "Aathi",
+      "predicate": "ASSIGNED_TO",
+      "object": "CG-102"
     }
-  ]
+  ],
+  "metadata": {
+    "records": [
+      {
+        "source": "slack",
+        "channel": "#dev-chat",
+        "timestamp": "2026-08-10T10:15:30Z"
+      },
+      {
+        "source": "github",
+        "repository": "ChronoGraph",
+        "timestamp": "2026-08-10T11:45:10Z"
+      },
+      {
+        "source": "jira",
+        "project": "CG",
+        "timestamp": "2026-08-10T14:20:00Z"
+      }
+    ]
+  },
+  "is_valid": true
 }

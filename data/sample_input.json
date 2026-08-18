@@ -1,29 +1,29 @@
 [
   {
-    "id": "sample-slack-001",
     "source": "slack",
-    "channel": "#general-dev",
-    "timestamp": "2026-08-10T10:15:30Z",
-    "text": "Aathi asked Karkuvel about the ChronoGraph ingestion pipeline."
+    "text": "Aathi discussed ChronoGraph ingestion pipeline with Karkuvel in #dev-chat.",
+    "metadata": {
+      "source": "slack",
+      "channel": "#dev-chat",
+      "timestamp": "2026-08-10T10:15:30Z"
+    }
   },
   {
-    "id": "sample-github-002",
     "source": "github",
-    "repository": "ChronoGraph",
-    "timestamp": "2026-08-10T11:45:10Z",
-    "text": "Karkuvel committed changes abc1234 to the data-ingestion branch and opened pull request #24."
+    "text": "Karkuvel committed changes abc1234 to the ChronoGraph repository and opened pull request #24. Aathi reviewed pull request #24 and merged it into main.",
+    "metadata": {
+      "source": "github",
+      "repository": "ChronoGraph",
+      "timestamp": "2026-08-10T11:45:10Z"
+    }
   },
   {
-    "id": "sample-jira-003",
     "source": "jira",
-    "project": "CG",
-    "timestamp": "2026-08-10T14:20:00Z",
-    "text": "Aathi was assigned the graph extraction task CG-102 for the ChronoGraph project."
-  },
-  {
-    "id": "sample-combined-004",
-    "source": "enterprise_composite",
-    "timestamp": "2026-08-10T16:00:00Z",
-    "text": "Karkuvel created commit 4f3a8b2 for the ChronoGraph repository. Aathi reviewed the pull request #45 created by Karkuvel and merged it into main."
+    "text": "Aathi was assigned the graph extraction task CG-102 for the ChronoGraph project.",
+    "metadata": {
+      "source": "jira",
+      "project": "CG",
+      "timestamp": "2026-08-10T14:20:00Z"
+    }
   }
 ]
