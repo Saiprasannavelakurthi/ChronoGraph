@@ -3,7 +3,7 @@ import "reactflow/dist/style.css";
 import { Waypoints, X } from "lucide-react";
 import { nodeTypes } from "../graph/CustomNodes.jsx";
 
-export default function GraphPanel({ nodes, edges, isOpen, onClose }) {
+export default function GraphPanel({ nodes, edges, isOpen, onClose, apiConnected }) {
   return (
     <aside
       className={`${
@@ -16,8 +16,17 @@ export default function GraphPanel({ nodes, edges, isOpen, onClose }) {
         <div className="flex items-center gap-2">
           <Waypoints size={16} className="text-signal-600" />
           <div>
-            <h2 className="font-display text-[14px] font-semibold text-ink-950">Subgraph timeline</h2>
-            <p className="text-[11px] text-ink-600">Entities extracted per turn</p>
+            <div className="flex items-center gap-1.5">
+              <h2 className="font-display text-[14px] font-semibold text-ink-950">ChronoGraph</h2>
+              {apiConnected ? (
+                <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-700">Live</span>
+              ) : (
+                <span className="rounded-full bg-mist-200 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-500">Simulated</span>
+              )}
+            </div>
+            <p className="text-[11px] text-ink-600">
+              {apiConnected ? "Real graph-ready triples from data-ingestion" : "Chat entities extracted per turn (API offline)"}
+            </p>
           </div>
         </div>
         <button

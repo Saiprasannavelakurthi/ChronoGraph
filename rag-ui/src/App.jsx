@@ -18,11 +18,22 @@ export default function App() {
   const [isTyping, setIsTyping] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [graphNodes, setGraphNodes] = useState([]);
-  const [graphEdges, setGraphEdges] = useState([]);
+  // Real graph from /api/graph — never overwritten by chat activity
+  const realGraphNodesRef = useRef([]);
+  const realGraphEdgesRef = useRef([]);
+  const [apiConnected, setApiConnected] = useState(false);
+
+  // Chat conversation overlay nodes (appended on top of real graph)
+  const [chatOverlayNodes, setChatOverlayNodes] = useState([]);
+  const [chatOverlayEdges, setChatOverlayEdges] = useState([]);
+
   const [graphOpen, setGraphOpen] = useState(true);
   const turnRef = useRef(0);
   const lastTurnIdRef = useRef(null);
+
+  // Combined nodes/edges: real graph base + chat overlay on top
+  const graphNodes = [...realGraphNodesRef.current, ...chatOverlayNodes];
+  const graphEdges = [...realGraphEdgesRef.current, ...chatOverlayEdges];
 
   const activeConversation = conversations.find((c) => c.id === activeId);
 
@@ -34,8 +45,12 @@ export default function App() {
         if (res.ok) {
           const data = await res.json();
           if (data.nodes && data.nodes.length > 0) {
-            setGraphNodes(data.nodes);
-            setGraphEdges(data.edges);
+            realGraphNodesRef.current = data.nodes;
+            realGraphEdgesRef.current = data.edges;
+            setApiConnected(true);
+            // Trigger re-render by clearing overlay (forces recalculation of combined graph)
+            setChatOverlayNodes([]);
+            setChatOverlayEdges([]);
           }
         }
       } catch (err) {
@@ -45,9 +60,10 @@ export default function App() {
     loadRealGraph();
   }, []);
 
-  const resetGraph = () => {
-    setGraphNodes([]);
-    setGraphEdges([]);
+  // Only reset chat overlay nodes; real graph is never cleared
+  const resetChatOverlay = () => {
+    setChatOverlayNodes([]);
+    setChatOverlayEdges([]);
     turnRef.current = 0;
     lastTurnIdRef.current = null;
   };
@@ -64,7 +80,8 @@ export default function App() {
       setMessages((prev) => [...prev, reply]);
       setIsTyping(false);
 
-      // Build this turn's subgraph and chain it onto the running timeline.
+      // Build this turn's subgraph and append to chat overlay only.
+      // The real /api/graph data in realGraphNodesRef is never touched.
       turnRef.current += 1;
       const { turnNode, entityNodes, edges } = buildTurnSubgraph(turnRef.current, {
         userText: text,
@@ -72,8 +89,8 @@ export default function App() {
         time: reply.time,
       });
 
-      setGraphNodes((prev) => [...prev, turnNode, ...entityNodes]);
-      setGraphEdges((prev) => {
+      setChatOverlayNodes((prev) => [...prev, turnNode, ...entityNodes]);
+      setChatOverlayEdges((prev) => {
         const spine = lastTurnIdRef.current
           ? [buildSpineEdge(lastTurnIdRef.current, turnNode.id)]
           : [];
@@ -87,14 +104,14 @@ export default function App() {
     setMessages(INITIAL_MESSAGES);
     setIsTyping(false);
     setSidebarOpen(false);
-    resetGraph();
+    resetChatOverlay();
   };
 
   const handleSelect = (id) => {
     setActiveId(id);
     setMessages(INITIAL_MESSAGES);
     setSidebarOpen(false);
-    resetGraph();
+    resetChatOverlay();
   };
 
   return (
@@ -136,6 +153,7 @@ export default function App() {
         edges={graphEdges}
         isOpen={graphOpen}
         onClose={() => setGraphOpen(false)}
+        apiConnected={apiConnected}
       />
     </div>
   );
