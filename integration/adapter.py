@@ -12,11 +12,16 @@ Transforms events and calls:
 
 Writes:
   integration/outputs/graph_extraction_result.json
+
+CLI Usage:
+  python integration/adapter.py               # Default: deterministic mock mode
+  python integration/adapter.py --live-groq   # Optional: live Groq Cloud extraction (if GROQ_API_KEY is configured)
 """
 
 import os
 import sys
 import json
+import argparse
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock
@@ -32,7 +37,12 @@ OUTPUT_DIR = ROOT_DIR / "integration" / "outputs"
 
 def adapt_normalized_events(events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Converts Karkuvel's normalized events into Aathi's extraction record schema.
+    Converts Karkuvel's normalized events into Aathi's extraction record schema:
+      {
+          "source": "slack" | "github" | "jira",
+          "text": "...",
+          "metadata": { ... }
+      }
     """
     adapted = []
     for evt in events:
@@ -66,7 +76,7 @@ def run_aathi_extraction_on_karkuvel_data(
     use_live_groq: bool = False
 ) -> Dict[str, Any]:
     """
-    Executes Aathi's extraction pipeline on Karkuvel's normalized events.
+    Executes Aathi's extraction pipeline on a representative sample of Karkuvel's normalized events.
     """
     events_path = DATA_INGESTION_DIR / "data" / "processed" / "normalized_events.json"
     if not events_path.exists():
@@ -93,24 +103,28 @@ def run_aathi_extraction_on_karkuvel_data(
     groq_api_key = os.getenv("GROQ_API_KEY")
     has_valid_groq = bool(groq_api_key and not groq_api_key.startswith("gsk_your_groq_api_key"))
 
-    mode_used = "mock"
+    mode_used = "deterministic_mock"
     extractor = None
 
-    if use_live_groq and has_valid_groq:
-        try:
-            print("  [Adapter] Using live Groq LLM extractor...")
-            extractor = GraphExtractor()
-            mode_used = "live_groq"
-        except Exception as err:
-            print(f"  [Adapter] Live Groq initialization failed ({err}), falling back to deterministic mock.")
+    if use_live_groq:
+        if has_valid_groq:
+            try:
+                print("  [Adapter] GROQ_API_KEY detected. Initializing live Groq LLM extractor...")
+                extractor = GraphExtractor()
+                mode_used = "live_groq"
+            except Exception as err:
+                print(f"  [Adapter] Live Groq initialization failed ({err}), falling back to deterministic mock.")
+                extractor = None
+        else:
+            print("  [Adapter] Live Groq requested but GROQ_API_KEY is missing/placeholder. Using deterministic mock mode.")
             extractor = None
 
     if extractor is None:
         mode_used = "deterministic_mock"
         mock_llm = MagicMock()
-        # Deterministic extraction outputs tailored to the sampled events
+        # Deterministic extraction outputs conforming to the sampled events
         mock_llm.complete.side_effect = [
-            # Slack event 1
+            # Slack event 1 (Arun Sharma proposal)
             MagicMock(text=json.dumps({
                 "entities": [
                     {"id": "person_arun_sharma", "name": "arun_sharma", "type": "PERSON"},
@@ -125,7 +139,7 @@ def run_aathi_extraction_on_karkuvel_data(
                 ],
                 "triples": []
             })),
-            # Slack event 2
+            # Slack event 2 (Priya Nair response)
             MagicMock(text=json.dumps({
                 "entities": [
                     {"id": "person_priya_nair", "name": "priya_nair", "type": "PERSON"},
@@ -138,7 +152,7 @@ def run_aathi_extraction_on_karkuvel_data(
                 ],
                 "triples": []
             })),
-            # GitHub event 1
+            # GitHub event 1 (Karkuvel PR)
             MagicMock(text=json.dumps({
                 "entities": [
                     {"id": "person_karkuvel", "name": "karkuvel", "type": "PERSON"},
@@ -151,7 +165,7 @@ def run_aathi_extraction_on_karkuvel_data(
                 ],
                 "triples": []
             })),
-            # GitHub event 2
+            # GitHub event 2 (Aathi review & merge)
             MagicMock(text=json.dumps({
                 "entities": [
                     {"id": "person_aathi", "name": "aathi", "type": "PERSON"},
@@ -163,7 +177,7 @@ def run_aathi_extraction_on_karkuvel_data(
                 ],
                 "triples": []
             })),
-            # Jira event 1
+            # Jira event 1 (Aathi task assignment)
             MagicMock(text=json.dumps({
                 "entities": [
                     {"id": "person_aathi", "name": "aathi", "type": "PERSON"},
@@ -182,6 +196,7 @@ def run_aathi_extraction_on_karkuvel_data(
     result = process_records(adapted_records, extractor=extractor, raise_on_validation_error=False)
     result["extraction_mode"] = mode_used
     result["events_processed"] = len(sampled_events)
+    result["total_dataset_events"] = len(raw_events)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     out_file = OUTPUT_DIR / "graph_extraction_result.json"
@@ -192,6 +207,8 @@ def run_aathi_extraction_on_karkuvel_data(
         "result": result,
         "output_file": str(out_file),
         "mode": mode_used,
+        "events_processed": len(sampled_events),
+        "total_dataset_events": len(raw_events),
         "entity_count": len(result.get("entities", [])),
         "relationship_count": len(result.get("relationships", [])),
         "triple_count": len(result.get("triples", [])),
@@ -199,12 +216,28 @@ def run_aathi_extraction_on_karkuvel_data(
     }
 
 
-if __name__ == "__main__":
-    res = run_aathi_extraction_on_karkuvel_data()
-    print("Extraction Adapter Completed:")
-    print(f"  Mode: {res['mode']}")
-    print(f"  Entities Extracted: {res['entity_count']}")
+def main():
+    parser = argparse.ArgumentParser(description="ChronoGraph Ingestion-to-Extraction Adapter")
+    parser.add_argument(
+        "--live-groq",
+        action="store_true",
+        help="Use live Groq Cloud API for extraction (requires GROQ_API_KEY in .env)",
+    )
+    args = parser.parse_args()
+
+    res = run_aathi_extraction_on_karkuvel_data(use_live_groq=args.live_groq)
+    print("=" * 60)
+    print("  CHRONOGRAPH INGESTION -> EXTRACTION ADAPTER")
+    print("=" * 60)
+    print(f"  Extraction Mode       : {res['mode']}")
+    print(f"  Events Sampled        : {res['events_processed']} of {res['total_dataset_events']}")
+    print(f"  Entities Extracted    : {res['entity_count']}")
     print(f"  Relationships Extracted: {res['relationship_count']}")
-    print(f"  Triples Extracted: {res['triple_count']}")
-    print(f"  Valid: {res['is_valid']}")
-    print(f"  Output: {res['output_file']}")
+    print(f"  Triples Synchronized  : {res['triple_count']}")
+    print(f"  Validation (is_valid) : {res['is_valid']}")
+    print(f"  Output Artifact       : {res['output_file']}")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()

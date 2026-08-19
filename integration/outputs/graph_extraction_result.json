@@ -271,5 +271,6 @@
   },
   "is_valid": true,
   "extraction_mode": "deterministic_mock",
-  "events_processed": 5
+  "events_processed": 5,
+  "total_dataset_events": 59
 }

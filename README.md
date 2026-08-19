@@ -15,32 +15,35 @@ ChronoGraph is a temporal knowledge-graph powered Retrieval-Augmented Generation
 
 ---
 
-## 🏛️ Week 2 Mid-Review Architecture
+## 🏛️ Week 2 Integrated Data Flow
 
 ```
-                    ChronoGraph
-                         │
-        ┌────────────────┼────────────────┐
-        │                │                │
-        ↓                ↓                ↓
- data-ingestion   graph-extraction   neo4j-temporal
-        │                │                │
-        │                │                ↓
-        │                │             Neo4j
-        │                │
-        └────────────────┘
-
-                         +
-                         │
-                         ↓
-                      rag-ui
+                     ENTERPRISE DATA (Slack, GitHub, Jira)
+                                      │
+                                      ▼
+                      1. data-ingestion (Karkuvel)
+                         → Output: normalized_events.json & graph_ready_triples.json
+                                      │
+                        ┌─────────────┴─────────────┐
+                        ▼                           ▼
+            2. graph-extraction (Aathi)    3. neo4j-temporal (Saiprasanna)
+               → integration/adapter.py       → Ingestion of graph_ready_triples
+                 processes normalized_events    into Neo4j & Temporal Queries
+               → Output: extraction_result.json      │
+                        │                           │
+                        └─────────────┬─────────────┘
+                                      ▼
+                      4. Integration API (GET /api/graph)
+                         → Serves real graph-ready nodes, edges, timeline
+                                      │
+                                      ▼
+                      5. rag-ui (Nagaraj)
+                         → Chat Interface + Subgraph Timeline UI
 ```
-
-> **Note**: This diagram represents the **Week 2 Mid-Review modular architecture** demonstrating each member's independent module deliverables prior to full system integration.
 
 ---
 
-## 👥 Team Branches & Review Structure
+## 👥 Team Ownership & Review Structure
 
 ```
 ChronoGraph (main)
@@ -54,13 +57,15 @@ ChronoGraph (main)
 ├── neo4j-temporal/       → Velakurthi Saiprasanna (Branch: neo4j-temporal)
 │   └── Neo4j database integration, temporal graph modeling, timestamps, and Cypher queries
 │
-└── rag-ui/               → Vembarasan Nagarajan (Branch: rag-ui)
-    └── Vite + React + Tailwind CSS chat interface and knowledge graph visualization UI
+├── rag-ui/               → Vembarasan Nagarajan (Branch: rag-ui)
+│   └── Vite + React + Tailwind CSS chat interface and knowledge graph visualization UI
+│
+└── integration/          → Integration Layer (Adapter, REST API, Outputs)
 ```
 
 ---
 
-## ⚡ One-Command Mid-Review Demonstration
+## ⚡ Automated Mid-Review Pipeline Verification
 
 To execute and verify the complete integrated pipeline across all four member modules:
 
@@ -68,71 +73,68 @@ To execute and verify the complete integrated pipeline across all four member mo
 python run_midreview.py
 ```
 
-This runner orchestrates:
-1. **Stage 1 (`data-ingestion`)**: Executes Karkuvel's graph preparation pipeline to validate, normalize, and deduplicate triples into `graph_ready_triples.json`.
-2. **Stage 2 (`graph-extraction`)**: Executes Aathi's multi-record batch extraction and verifies live Groq LLM extraction.
-3. **Stage 3 (`neo4j-temporal`)**: Ingests `graph_ready_triples.json` into Neo4j (or reports clean diagnostic status if Neo4j is offline).
-4. **Stage 4 (`rag-ui`)**: Verifies Nagaraj's React + Vite Chat UI and subgraph timeline.
+*Optional — Run with live Groq LLM extraction (requires `GROQ_API_KEY` in `.env`):*
+```bash
+python run_midreview.py --live-groq
+```
+
+### What this runner verifies:
+1. **Stage 1 (`data-ingestion`)**: Executes Karkuvel's graph preparation pipeline to validate, normalize, and deduplicate 142 triples into `graph_ready_triples.json`.
+2. **Stage 2 (`graph-extraction`)**: Connects Karkuvel's `normalized_events.json` to Aathi's `process_records()` pipeline via `integration/adapter.py`. The default mid-review run uses **deterministic mock extraction** for reproducibility. Live Groq extraction is optional.
+3. **Stage 3 (`neo4j-temporal`)**: Compiles Python bytecode (`py_compile`) and verifies `create_graph.py` graph-ready loader and temporal queries. (If Neo4j credentials are unconfigured, reports clean `BLOCKED BY EXT SERVICE`).
+4. **Stage 4 (`integration-api`)**: Validates the Integration API endpoints (`GET /api/health` and `GET /api/graph`) using FastAPI test client.
+5. **Stage 5 (`rag-ui`)**: Verifies the production build (`npm run build`) and checks if the local dev server is active.
 
 ---
 
-## 🚀 Individual Module Run Guide
+## 🖥️ Live Browser Mid-Review Demonstration Guide
 
-### 1. Karkuvel — Data Ingestion & Graph Preparation
-- **Folder**: `data-ingestion/`
-- **Commands**:
-  ```bash
-  cd data-ingestion
-  pytest -q
-  python main.py --prepare-graph
-  python main.py --validate-dag
-  ```
-- **Output**:
-  - `data/processed/graph_ready_triples.json` (142 validated, normalized, deduplicated triples)
-  - `data/processed/graph_prep_summary.json` (pipeline execution statistics)
-  - 230 passing pytest tests
+To run the live interactive demonstration with real ChronoGraph graph data:
 
-### 2. Aathi Narayana Moorthi — LLM Graph Extraction
-- **Folder**: `graph-extraction/`
-- **Commands**:
-  ```bash
-  cd graph-extraction
-  pytest -q
-  python data/week2_demo.py
-  ```
-- **Output**:
-  - Batch extraction demo outputting validated Neo4j-ready JSON (`entities`, `relationships`, `triples`, `metadata`, `is_valid: true`)
-  - 28 passing pytest tests
+### Step 1 — Generate Graph-Ready Data
+```bash
+cd data-ingestion
+pytest -q
+python main.py --prepare-graph
+cd ..
+```
 
-### 3. Velakurthi Saiprasanna — Neo4j & Temporal Queries
-- **Folder**: `neo4j-temporal/`
-- **Commands**:
-  ```bash
-  cd neo4j-temporal
-  # Syntax and import validation:
-  python -m py_compile backend/create_graph.py backend/neo4j_connection.py backend/temporal_queries.py
-  # Live execution (requires running Neo4j database + .env configuration):
-  python backend/create_graph.py
-  python backend/temporal_queries.py
-  ```
-- **Prerequisites**:
-  - Requires a running Neo4j instance (Neo4j Desktop or Aura)
-  - Configured `.env` with `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`
-  - Query definitions verified in `data/temporal_queries.json`
+### Step 2 — Run Aathi Extraction Adapter
+```bash
+# Default deterministic mock mode:
+python integration/adapter.py
 
-### 4. Vembarasan Nagarajan — Chatbot & Graph UI
-- **Folder**: `rag-ui/`
-- **Commands**:
-  ```bash
-  cd rag-ui
-  npm install
-  npm run build
-  npm run dev
-  ```
-- **Output**:
-  - Production build compiled successfully (`dist/`)
-  - Live interactive UI running on `http://localhost:5173`
-  - Current mode: Client-side UI + simulated `mockBot.js` with dynamic subgraph timeline rendering
+# Or with live Groq API (if configured in .env):
+python integration/adapter.py --live-groq
+```
+
+### Step 3 — Start Integration API (Terminal 1)
+From project root:
+```bash
+python -m uvicorn integration.api:app --host 127.0.0.1 --port 8000
+```
+*Verify in browser:* [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)
+
+### Step 4 — Start RAG UI (Terminal 2)
+```bash
+cd rag-ui
+npm run dev
+```
+*Open in browser:* [http://localhost:5173](http://localhost:5173)
+
+- The UI fetches `/api/graph` via the Vite dev proxy (`http://127.0.0.1:8000`).
+- The right panel renders **real ChronoGraph graph-ready entities and temporal events**.
+- If the API server is offline, the UI gracefully falls back to interactive simulated timeline mode.
+- *Note:* Chat replies remain simulated (`src/data/mockBot.js`) for Week 2.
+
+### Step 5 — Neo4j Temporal Queries
+*(When a local or cloud Neo4j instance is running and configured in `.env`)*:
+```bash
+cd neo4j-temporal
+python backend/create_graph.py
+python backend/temporal_queries.py
+```
+*(If Neo4j is not running, the loader and temporal query suite are verified and marked as BLOCKED BY EXT SERVICE).*
 
 ---
 
@@ -141,27 +143,16 @@ This runner orchestrates:
 | Member | Module | Tests | Build / Run | Status | Data Flow |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Karkuvel** | `data-ingestion/` | 230 Passed | Pipeline Ran Successfully | **PASS** | Ingest raw sources → Output `graph_ready_triples.json` |
-| **Aathi** | `graph-extraction/` | 28 Passed | Week 2 Demo Ran Successfully | **PASS** | Process multi-record text → Output validated graph JSON |
-| **Saiprasanna** | `neo4j-temporal/` | Syntax Verified | Ready for live connection | **BLOCKED BY EXT SERVICE** | Hardcoded demo graph / queries require live Neo4j credentials |
-| **Nagaraj** | `rag-ui/` | Build Verified | Vite Dev Server Live (:5173) | **PASS** | UI → Mock Data (`mockBot.js` + `buildTurnSubgraph`) |
+| **Aathi** | `graph-extraction/` | 28 Passed | Adapter Ran Successfully | **PASS** | `normalized_events.json` → `process_records()` → `graph_extraction_result.json` |
+| **Saiprasanna** | `neo4j-temporal/` | Syntax Compiled | Handoff & Queries Verified | **BLOCKED BY EXT SERVICE** | `graph_ready_triples.json` loader ready; live DB requires `.env` credentials |
+| **Integration** | `integration/` | Endpoints Verified | REST API Active (:8000) | **PASS** | `graph_ready_triples.json` → `GET /api/graph` |
+| **Nagaraj** | `rag-ui/` | Build Verified | Vite Dev Server (:5173) | **PASS** | UI loads real graph data via `/api/graph` with simulated chat fallback |
 
 ---
 
 ## 🔄 Post-Mid-Review Team Integration Workflow
 
 Following the mid-review, all team members will synchronize their branches with `main` to begin unified development:
-
-```
-                main (Integrated ChronoGraph Codebase)
-                               │
-       ┌───────────────────────┼───────────────────────┐
-       ↓                       ↓                       ↓
-data-ingestion          graph-extraction        neo4j-temporal / rag-ui
-```
-
-### Team Synchronization Commands
-
-Each member runs the following from their local repository clone:
 
 ```bash
 # 1. Update local main
@@ -170,22 +161,14 @@ git pull origin main
 
 # 2. Merge main into your feature branch and push
 # For Karkuvel:
-git checkout data-ingestion
-git merge main
-git push origin data-ingestion
+git checkout data-ingestion && git merge main && git push origin data-ingestion
 
 # For Aathi Narayana Moorthi:
-git checkout graph-extraction
-git merge main
-git push origin graph-extraction
+git checkout graph-extraction && git merge main && git push origin graph-extraction
 
 # For Velakurthi Saiprasanna:
-git checkout neo4j-temporal
-git merge main
-git push origin neo4j-temporal
+git checkout neo4j-temporal && git merge main && git push origin neo4j-temporal
 
 # For Vembarasan Nagarajan:
-git checkout rag-ui
-git merge main
-git push origin rag-ui
+git checkout rag-ui && git merge main && git push origin rag-ui
 ```
