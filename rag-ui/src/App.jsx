@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Sidebar from "./components/Sidebar.jsx";
 import Header from "./components/Header.jsx";
 import ChatWindow from "./components/ChatWindow.jsx";
@@ -25,6 +25,25 @@ export default function App() {
   const lastTurnIdRef = useRef(null);
 
   const activeConversation = conversations.find((c) => c.id === activeId);
+
+  // Load real ChronoGraph graph-ready data from integration API on mount
+  useEffect(() => {
+    async function loadRealGraph() {
+      try {
+        const res = await fetch("/api/graph?limit=12");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.nodes && data.nodes.length > 0) {
+            setGraphNodes(data.nodes);
+            setGraphEdges(data.edges);
+          }
+        }
+      } catch (err) {
+        console.log("Integration API offline; using interactive simulated timeline mode.");
+      }
+    }
+    loadRealGraph();
+  }, []);
 
   const resetGraph = () => {
     setGraphNodes([]);
