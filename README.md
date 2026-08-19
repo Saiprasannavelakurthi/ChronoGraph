@@ -60,9 +60,23 @@ ChronoGraph (main)
 
 ---
 
-## 🚀 Week 2 Mid-Review Run Guide
+## ⚡ One-Command Mid-Review Demonstration
 
-Follow the instructions below to run and verify each member's Week 2 implementation:
+To execute and verify the complete integrated pipeline across all four member modules:
+
+```bash
+python run_midreview.py
+```
+
+This runner orchestrates:
+1. **Stage 1 (`data-ingestion`)**: Executes Karkuvel's graph preparation pipeline to validate, normalize, and deduplicate triples into `graph_ready_triples.json`.
+2. **Stage 2 (`graph-extraction`)**: Executes Aathi's multi-record batch extraction and verifies live Groq LLM extraction.
+3. **Stage 3 (`neo4j-temporal`)**: Ingests `graph_ready_triples.json` into Neo4j (or reports clean diagnostic status if Neo4j is offline).
+4. **Stage 4 (`rag-ui`)**: Verifies Nagaraj's React + Vite Chat UI and subgraph timeline.
+
+---
+
+## 🚀 Individual Module Run Guide
 
 ### 1. Karkuvel — Data Ingestion & Graph Preparation
 - **Folder**: `data-ingestion/`
