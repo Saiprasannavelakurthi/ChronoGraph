@@ -76,15 +76,16 @@ def load_graph_ready_triples(file_path=None):
             confidence = float(t.get("confidence", 1.0))
             triple_id = t.get("triple_id", "")
 
+            # Use triple_id in relationship MERGE to preserve multiple historical events
+            # between the same subject and object across different timestamps
             query = f"""
             MERGE (s:{sub_type} {{name: $sub}})
             MERGE (o:{obj_type} {{name: $obj}})
-            MERGE (s)-[r:{rel}]->(o)
+            MERGE (s)-[r:{rel} {{triple_id: $triple_id}}]->(o)
             SET r.timestamp = datetime($ts),
                 r.evidence = $evidence,
                 r.source = $source,
-                r.confidence = $confidence,
-                r.triple_id = $triple_id
+                r.confidence = $confidence
             """
             session.run(
                 query,
