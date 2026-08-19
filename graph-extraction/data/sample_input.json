@@ -1,0 +1,29 @@
+[
+  {
+    "source": "slack",
+    "text": "Aathi discussed ChronoGraph ingestion pipeline with Karkuvel in #dev-chat.",
+    "metadata": {
+      "source": "slack",
+      "channel": "#dev-chat",
+      "timestamp": "2026-08-10T10:15:30Z"
+    }
+  },
+  {
+    "source": "github",
+    "text": "Karkuvel committed changes abc1234 to the ChronoGraph repository and opened pull request #24. Aathi reviewed pull request #24 and merged it into main.",
+    "metadata": {
+      "source": "github",
+      "repository": "ChronoGraph",
+      "timestamp": "2026-08-10T11:45:10Z"
+    }
+  },
+  {
+    "source": "jira",
+    "text": "Aathi was assigned the graph extraction task CG-102 for the ChronoGraph project.",
+    "metadata": {
+      "source": "jira",
+      "project": "CG",
+      "timestamp": "2026-08-10T14:20:00Z"
+    }
+  }
+]

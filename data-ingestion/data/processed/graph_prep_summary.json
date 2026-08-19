@@ -1,0 +1,72 @@
+{
+  "generated_at": "2026-08-16T10:11:09.807180+00:00",
+  "pipeline_stage": "Week 2 – Graph Preparation (Karkuvel)",
+  "input_file": "data\\processed\\extracted_triples.json",
+  "output_file": "data\\processed\\graph_ready_triples.json",
+  "statistics": {
+    "total_input_triples": 142,
+    "valid_triples": 142,
+    "invalid_triples": 0,
+    "validation_errors": 0,
+    "triples_after_deduplication": 142,
+    "duplicates_removed": 0,
+    "graph_ready_triples": 142
+  },
+  "entities": {
+    "people": 5,
+    "technologies": 8,
+    "projects": 2,
+    "services": 2,
+    "issues": 1,
+    "entity_type_mention_counts": {
+      "Person": 142,
+      "Technology": 58,
+      "Service": 22,
+      "Problem": 12,
+      "Database": 28,
+      "Project": 15,
+      "Issue": 5,
+      "ArchitectureDecision": 2
+    }
+  },
+  "relations": {
+    "unique_relation_types": 8,
+    "relation_counts": {
+      "MIGRATED_TO": 61,
+      "REVIEWED": 26,
+      "RAISED_CONCERN": 20,
+      "ARGUED_AGAINST": 11,
+      "IMPLEMENTED": 10,
+      "ADVOCATED_FOR": 8,
+      "ASSIGNED_TO": 3,
+      "DEPRECATED": 3
+    }
+  },
+  "sources": {
+    "slack": 51,
+    "github": 40,
+    "jira": 51,
+    "by_source": {
+      "slack": 51,
+      "github": 40,
+      "jira": 51
+    }
+  },
+  "date_range": {
+    "earliest": "2023-03-15T10:30:00+00:00",
+    "latest": "2023-05-30T10:00:00+00:00"
+  },
+  "validation_report": {
+    "total_input": 142,
+    "valid_count": 142,
+    "invalid_count": 0,
+    "error_count": 0,
+    "errors": []
+  },
+  "deduplication_report": {
+    "input_count": 142,
+    "duplicate_count": 0,
+    "unique_count": 142,
+    "duplicates": []
+  }
+}

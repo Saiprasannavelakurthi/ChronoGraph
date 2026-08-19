@@ -1,0 +1,1728 @@
+[
+  {
+    "event_id": "bcbab6c3-f75a-4e1a-961d-6ad7c63c2019",
+    "source": "slack",
+    "source_id": "slack_001",
+    "author": "arun_sharma",
+    "content": "Team, I've been running cost analysis for Q1. Our AWS bill hit $84k this month – up 40% YoY. I strongly believe we should start evaluating a migration to GCP. GCP's sustained-use discounts and committed-use contracts could cut costs by 35-40%. I'd like to propose a phased migration starting with the authentication service.",
+    "timestamp": "2023-03-15T10:30:00+00:00",
+    "channel": "infra-migration",
+    "thread_id": null,
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C001",
+      "display_name": "Arun Sharma",
+      "reactions": [
+        "+1:3",
+        "eyes:2"
+      ]
+    }
+  },
+  {
+    "event_id": "0f9d70c4-5cff-45b3-bafa-69338092cee4",
+    "source": "slack",
+    "source_id": "slack_002",
+    "author": "priya_nair",
+    "content": "Arun, I've heard this argument before. AWS gives us mature tooling and our team already knows it. The migration risk is significant – we have 47 microservices, most touching S3 and RDS. Switching to GCS and CloudSQL is not trivial. I'd argue against a rushed migration.",
+    "timestamp": "2023-03-15T10:48:00+00:00",
+    "channel": "infra-migration",
+    "thread_id": "slack_001",
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C001",
+      "display_name": "Priya Nair",
+      "reactions": [
+        "thinking_face:5"
+      ]
+    }
+  },
+  {
+    "event_id": "b85ca9f8-1d66-478b-ae27-94ed36e6ca4f",
+    "source": "slack",
+    "source_id": "slack_003",
+    "author": "rohan_mehta",
+    "content": "Priya raises valid concerns. However, I did a spike on GKE (Google Kubernetes Engine) last week and honestly it outperforms EKS in our latency benchmarks by ~22%. If we're rethinking our Kubernetes strategy anyway, GCP makes a lot of sense. I'm open to exploring further.",
+    "timestamp": "2023-03-15T11:10:00+00:00",
+    "channel": "infra-migration",
+    "thread_id": "slack_001",
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C001",
+      "display_name": "Rohan Mehta",
+      "reactions": [
+        "+1:2"
+      ]
+    }
+  },
+  {
+    "event_id": "f906cc56-06d5-4964-830e-9c0a63dcb6ce",
+    "source": "slack",
+    "source_id": "slack_004",
+    "author": "divya_krishnan",
+    "content": "I want to flag a real concern: our team's GCP expertise is near zero. We'd be onboarding an entirely new ecosystem. At minimum we need a 3-month ramp period, dedicated training, and probably a GCP Professional Cloud Architect cert path for senior engineers. This is not a cost-neutral migration.",
+    "timestamp": "2023-03-15T11:35:00+00:00",
+    "channel": "infra-migration",
+    "thread_id": "slack_001",
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C001",
+      "display_name": "Divya Krishnan",
+      "reactions": [
+        "warning:4",
+        "+1:2"
+      ]
+    }
+  },
+  {
+    "event_id": "e3a14c73-28fc-40af-ade2-f111f2fecf4f",
+    "source": "slack",
+    "source_id": "slack_005",
+    "author": "arun_sharma",
+    "content": "Fair points all around. Let's schedule an architecture review session for next week. I'll prepare a formal migration proposal. We should also loop in the VP of Engineering.",
+    "timestamp": "2023-03-15T12:00:00+00:00",
+    "channel": "infra-migration",
+    "thread_id": "slack_001",
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C001",
+      "display_name": "Arun Sharma",
+      "reactions": [
+        "+1:6"
+      ]
+    }
+  },
+  {
+    "event_id": "2b5bd854-3d73-411f-8a26-aa850e7b7107",
+    "source": "slack",
+    "source_id": "slack_006",
+    "author": "vikram_patel",
+    "content": "I've been evaluating our options for the new event-sourcing service. PostgreSQL is the obvious choice for relational data, but I'm seriously considering MongoDB for the event store – flexible schema, native horizontal scaling. Thoughts?",
+    "timestamp": "2023-04-02T09:00:00+00:00",
+    "channel": "database-decisions",
+    "thread_id": null,
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C002",
+      "display_name": "Vikram Patel",
+      "reactions": []
+    }
+  },
+  {
+    "event_id": "da2af806-331e-4746-a06b-3fb343e67925",
+    "source": "slack",
+    "source_id": "slack_007",
+    "author": "priya_nair",
+    "content": "Vikram, I'd argue against MongoDB here. We've seen too many teams regret schema-less designs when requirements evolve. PostgreSQL with JSONB gives you the flexibility you need without sacrificing ACID compliance. Our existing DBA expertise is in Postgres.",
+    "timestamp": "2023-04-02T09:25:00+00:00",
+    "channel": "database-decisions",
+    "thread_id": "slack_006",
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C002",
+      "display_name": "Priya Nair",
+      "reactions": [
+        "+1:4"
+      ]
+    }
+  },
+  {
+    "event_id": "4c920347-6edb-4588-9b24-d253179ae281",
+    "source": "slack",
+    "source_id": "slack_008",
+    "author": "vikram_patel",
+    "content": "That's a fair point Priya. After thinking it over, I agree – PostgreSQL it is for the event store too. I'll design the schema today and open a PR for review.",
+    "timestamp": "2023-04-02T10:05:00+00:00",
+    "channel": "database-decisions",
+    "thread_id": "slack_006",
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C002",
+      "display_name": "Vikram Patel",
+      "reactions": [
+        "+1:3"
+      ]
+    }
+  },
+  {
+    "event_id": "53b4501e-2577-4cbf-8e74-fc13500522dd",
+    "source": "slack",
+    "source_id": "slack_009",
+    "author": "arun_sharma",
+    "content": "Quick update from the arch review: leadership has formally approved the GCP migration. Phase 1 targets the authentication-service and API gateway. Rohan will lead the Kubernetes migration to GKE. Target date: June 30, 2023.",
+    "timestamp": "2023-04-05T14:00:00+00:00",
+    "channel": "database-decisions",
+    "thread_id": null,
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C002",
+      "display_name": "Arun Sharma",
+      "reactions": [
+        "+1:8",
+        "rocket:5"
+      ]
+    }
+  },
+  {
+    "event_id": "fa1ad3ca-0ce7-43ce-a452-2a6a32a6f540",
+    "source": "slack",
+    "source_id": "slack_010",
+    "author": "rohan_mehta",
+    "content": "Acknowledged. I've already raised JIRA ticket CLOUD-101 for the GKE migration tasks. Will assign sub-tasks to the platform team this week.",
+    "timestamp": "2023-04-05T14:20:00+00:00",
+    "channel": "database-decisions",
+    "thread_id": "slack_009",
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C002",
+      "display_name": "Rohan Mehta",
+      "reactions": [
+        "+1:3"
+      ]
+    }
+  },
+  {
+    "event_id": "8799fc82-366a-459e-af30-02ea819a4ee6",
+    "source": "slack",
+    "source_id": "slack_011",
+    "author": "divya_krishnan",
+    "content": "URGENT: I've identified a critical security vulnerability in the authentication-service. The JWT secret rotation mechanism has a race condition. This needs immediate patching before the GCP migration kicks off. I've raised JIRA ticket SEC-055.",
+    "timestamp": "2023-04-12T08:15:00+00:00",
+    "channel": "security-alerts",
+    "thread_id": null,
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C003",
+      "display_name": "Divya Krishnan",
+      "reactions": [
+        "alert:10",
+        "+1:2"
+      ]
+    }
+  },
+  {
+    "event_id": "72696ad1-338a-4246-9f19-b8151717eb70",
+    "source": "slack",
+    "source_id": "slack_012",
+    "author": "arun_sharma",
+    "content": "Divya, thanks for flagging this. I'm assigning this to Vikram since he owns the auth service. We need a patch within 48 hours. The migration timeline may slip slightly.",
+    "timestamp": "2023-04-12T08:30:00+00:00",
+    "channel": "security-alerts",
+    "thread_id": "slack_011",
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C003",
+      "display_name": "Arun Sharma",
+      "reactions": [
+        "+1:5"
+      ]
+    }
+  },
+  {
+    "event_id": "2ad67966-42fe-4c56-9f21-7c26fc43d68a",
+    "source": "slack",
+    "source_id": "slack_013",
+    "author": "vikram_patel",
+    "content": "On it. I've already opened PR #89 with the fix. It implements a distributed lock using Redis to prevent the race condition. Needs review from Divya and Rohan.",
+    "timestamp": "2023-04-12T09:00:00+00:00",
+    "channel": "security-alerts",
+    "thread_id": "slack_011",
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C003",
+      "display_name": "Vikram Patel",
+      "reactions": [
+        "+1:4"
+      ]
+    }
+  },
+  {
+    "event_id": "c6bf4471-4a2c-444a-85fa-3091539eb13f",
+    "source": "slack",
+    "source_id": "slack_014",
+    "author": "rohan_mehta",
+    "content": "We've completed the initial GKE cluster setup in us-central1. The authentication-service Docker image has been rebuilt for GCP Artifact Registry. First deployment to staging is live. Latency is looking good – p99 is 45ms vs 68ms on EKS.",
+    "timestamp": "2023-05-10T09:30:00+00:00",
+    "channel": "platform-engineering",
+    "thread_id": null,
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C004",
+      "display_name": "Rohan Mehta",
+      "reactions": [
+        "rocket:6",
+        "+1:4"
+      ]
+    }
+  },
+  {
+    "event_id": "219e8d47-0e19-4c37-9e57-2e93b12d5ba3",
+    "source": "slack",
+    "source_id": "slack_015",
+    "author": "priya_nair",
+    "content": "Rohan, impressive numbers! That validates the GKE decision. I'm now a convert – I was skeptical but the data speaks. Let's accelerate the migration plan. I'm implementing GCP Cloud SQL for the auth service database today.",
+    "timestamp": "2023-05-10T10:00:00+00:00",
+    "channel": "platform-engineering",
+    "thread_id": "slack_014",
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C004",
+      "display_name": "Priya Nair",
+      "reactions": [
+        "+1:7"
+      ]
+    }
+  },
+  {
+    "event_id": "c0f06dc3-bb4d-4ca5-a02b-3f23f3647f7c",
+    "source": "slack",
+    "source_id": "slack_016",
+    "author": "arun_sharma",
+    "content": "Phase 1 GCP migration is officially COMPLETE as of today for the authentication-service and API gateway. Our AWS costs for those services drop to zero from June 1. Phase 2 will target the payment and notification services. Rohan and Vikram – great work.",
+    "timestamp": "2023-05-15T11:00:00+00:00",
+    "channel": "platform-engineering",
+    "thread_id": null,
+    "title": null,
+    "labels": [],
+    "metadata": {
+      "workspace": "acme-engineering",
+      "channel_id": "C004",
+      "display_name": "Arun Sharma",
+      "reactions": [
+        "tada:10",
+        "+1:8",
+        "rocket:5"
+      ]
+    }
+  },
+  {
+    "event_id": "43f485a0-70c2-49c9-8af1-96faf3afdb81",
+    "source": "github",
+    "source_id": "github_pr_001",
+    "author": "vikram_patel",
+    "content": "[PR #78] feat: Deprecate AWS SDK v1 – replace with boto3 v2 adapter This PR removes all AWS SDK v1 usage from the authentication-service and api-gateway. Replaces with boto3 v2 compatible adapter layer to prepare for eventual GCP migration. Deprecated: S3Client_v1, SQSClient_v1.",
+    "timestamp": "2023-03-20T09:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_001",
+    "title": "feat: Deprecate AWS SDK v1 – replace with boto3 v2 adapter",
+    "labels": [
+      "migration",
+      "aws",
+      "breaking-change"
+    ],
+    "metadata": {
+      "event_subtype": "pr_description",
+      "pr_id": "github_pr_001",
+      "pr_number": 78,
+      "state": "merged",
+      "reviewers": [
+        "arun_sharma",
+        "rohan_mehta"
+      ],
+      "merged_at": "2023-03-22T16:30:00Z",
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "6723539d-b558-4dbd-afca-b4ff68afe03e",
+    "source": "github",
+    "source_id": "a1b2c3d",
+    "author": "vikram_patel",
+    "content": "chore: remove deprecated AWS SDK v1 imports from auth-service",
+    "timestamp": "2023-03-20T09:30:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_001",
+    "title": "feat: Deprecate AWS SDK v1 – replace with boto3 v2 adapter",
+    "labels": [
+      "migration",
+      "aws",
+      "breaking-change"
+    ],
+    "metadata": {
+      "event_subtype": "commit",
+      "pr_id": "github_pr_001",
+      "pr_number": 78,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "8a120b79-1e4d-4515-b4c9-77967748b7d2",
+    "source": "github",
+    "source_id": "e4f5g6h",
+    "author": "vikram_patel",
+    "content": "feat: implement boto3 v2 adapter for S3 operations in auth-service",
+    "timestamp": "2023-03-21T11:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_001",
+    "title": "feat: Deprecate AWS SDK v1 – replace with boto3 v2 adapter",
+    "labels": [
+      "migration",
+      "aws",
+      "breaking-change"
+    ],
+    "metadata": {
+      "event_subtype": "commit",
+      "pr_id": "github_pr_001",
+      "pr_number": 78,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "e8656907-951b-4c82-a71c-7acf08523d67",
+    "source": "github",
+    "source_id": "i7j8k9l",
+    "author": "vikram_patel",
+    "content": "test: add unit tests for boto3 v2 adapter layer",
+    "timestamp": "2023-03-22T14:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_001",
+    "title": "feat: Deprecate AWS SDK v1 – replace with boto3 v2 adapter",
+    "labels": [
+      "migration",
+      "aws",
+      "breaking-change"
+    ],
+    "metadata": {
+      "event_subtype": "commit",
+      "pr_id": "github_pr_001",
+      "pr_number": 78,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "3e429873-db82-4698-bfa0-41e8ac70d92a",
+    "source": "github",
+    "source_id": "github_rc_001",
+    "author": "arun_sharma",
+    "content": "Good work Vikram. The adapter pattern here is solid – it will make the eventual GCP migration much cleaner since we can swap boto3 calls for GCS equivalents. LGTM but please add a deprecation warning in the old entry-points.",
+    "timestamp": "2023-03-21T13:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_001",
+    "title": "feat: Deprecate AWS SDK v1 – replace with boto3 v2 adapter",
+    "labels": [
+      "migration",
+      "aws",
+      "breaking-change"
+    ],
+    "metadata": {
+      "event_subtype": "review_comment",
+      "pr_id": "github_pr_001",
+      "pr_number": 78,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "src/auth/storage/s3_client.py",
+      "line": 42
+    }
+  },
+  {
+    "event_id": "13a3818e-397c-4be6-8a61-ac30dc87a111",
+    "source": "github",
+    "source_id": "github_rc_002",
+    "author": "rohan_mehta",
+    "content": "Approved. This is exactly the abstraction we need for the GCP migration. The boto3 v2 adapter decouples our code from AWS-specific APIs nicely.",
+    "timestamp": "2023-03-22T09:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_001",
+    "title": "feat: Deprecate AWS SDK v1 – replace with boto3 v2 adapter",
+    "labels": [
+      "migration",
+      "aws",
+      "breaking-change"
+    ],
+    "metadata": {
+      "event_subtype": "review_comment",
+      "pr_id": "github_pr_001",
+      "pr_number": 78,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "src/auth/storage/adapter.py",
+      "line": 18
+    }
+  },
+  {
+    "event_id": "2e5bd4c1-8474-4e6b-a946-291e4d78cd48",
+    "source": "github",
+    "source_id": "github_pr_002",
+    "author": "vikram_patel",
+    "content": "[PR #82] fix: JWT race condition in token rotation – use Redis distributed lock Critical security fix for SEC-055. The JWT secret rotation had a race condition where two concurrent requests could both read the old secret during rotation. Fixed with Redis distributed locking (Redlock algorithm) to ensure atomic token rotation.",
+    "timestamp": "2023-04-12T09:30:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_002",
+    "title": "fix: JWT race condition in token rotation – use Redis distributed lock",
+    "labels": [
+      "security",
+      "critical",
+      "auth-service"
+    ],
+    "metadata": {
+      "event_subtype": "pr_description",
+      "pr_id": "github_pr_002",
+      "pr_number": 82,
+      "state": "merged",
+      "reviewers": [
+        "divya_krishnan",
+        "rohan_mehta"
+      ],
+      "merged_at": "2023-04-13T17:00:00Z",
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "6afbb2a0-54dc-40da-b375-83fa576b114d",
+    "source": "github",
+    "source_id": "m1n2o3p",
+    "author": "vikram_patel",
+    "content": "fix(auth): implement Redlock distributed lock for JWT secret rotation",
+    "timestamp": "2023-04-12T10:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_002",
+    "title": "fix: JWT race condition in token rotation – use Redis distributed lock",
+    "labels": [
+      "security",
+      "critical",
+      "auth-service"
+    ],
+    "metadata": {
+      "event_subtype": "commit",
+      "pr_id": "github_pr_002",
+      "pr_number": 82,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "658dabe8-9051-4780-8453-f998fcd96b06",
+    "source": "github",
+    "source_id": "q4r5s6t",
+    "author": "vikram_patel",
+    "content": "test(auth): add concurrent token rotation integration tests",
+    "timestamp": "2023-04-12T15:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_002",
+    "title": "fix: JWT race condition in token rotation – use Redis distributed lock",
+    "labels": [
+      "security",
+      "critical",
+      "auth-service"
+    ],
+    "metadata": {
+      "event_subtype": "commit",
+      "pr_id": "github_pr_002",
+      "pr_number": 82,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "9071f54f-ae98-4b58-b40b-de03a5231876",
+    "source": "github",
+    "source_id": "github_rc_003",
+    "author": "divya_krishnan",
+    "content": "Excellent fix Vikram. The Redlock implementation is correct. Lock TTL of 5s is appropriate. I've verified the fix against the race condition I originally identified in SEC-055. Approved.",
+    "timestamp": "2023-04-13T10:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_002",
+    "title": "fix: JWT race condition in token rotation – use Redis distributed lock",
+    "labels": [
+      "security",
+      "critical",
+      "auth-service"
+    ],
+    "metadata": {
+      "event_subtype": "review_comment",
+      "pr_id": "github_pr_002",
+      "pr_number": 82,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "src/auth/tokens/rotation.py",
+      "line": 67
+    }
+  },
+  {
+    "event_id": "96aec19b-e856-442b-9ef6-0f7c36f15bd1",
+    "source": "github",
+    "source_id": "github_rc_004",
+    "author": "rohan_mehta",
+    "content": "LGTM. Redis dependency is already in our stack. One note: ensure Redis connection pool is sized correctly for GKE pod autoscaling.",
+    "timestamp": "2023-04-13T14:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_002",
+    "title": "fix: JWT race condition in token rotation – use Redis distributed lock",
+    "labels": [
+      "security",
+      "critical",
+      "auth-service"
+    ],
+    "metadata": {
+      "event_subtype": "review_comment",
+      "pr_id": "github_pr_002",
+      "pr_number": 82,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "src/auth/tokens/rotation.py",
+      "line": 23
+    }
+  },
+  {
+    "event_id": "c45e2a7c-fc6d-44a6-8abc-f65038f9b87c",
+    "source": "github",
+    "source_id": "github_pr_003",
+    "author": "rohan_mehta",
+    "content": "[PR #89] feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service Phase 1 GCP migration: replaces all AWS S3 usage in authentication-service with Google Cloud Storage (GCS). Removes boto3 dependency from auth-service module. Adds google-cloud-storage to requirements. Implements GCS-backed credential storage and session artifact storage.",
+    "timestamp": "2023-05-01T10:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_003",
+    "title": "feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service",
+    "labels": [
+      "migration",
+      "gcp",
+      "auth-service",
+      "phase-1"
+    ],
+    "metadata": {
+      "event_subtype": "pr_description",
+      "pr_id": "github_pr_003",
+      "pr_number": 89,
+      "state": "merged",
+      "reviewers": [
+        "arun_sharma",
+        "priya_nair",
+        "vikram_patel"
+      ],
+      "merged_at": "2023-05-05T18:00:00Z",
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "25951db4-5d87-434f-ac1d-06df60e1f723",
+    "source": "github",
+    "source_id": "u7v8w9x",
+    "author": "rohan_mehta",
+    "content": "feat(auth): add GCS client wrapper for credential storage",
+    "timestamp": "2023-05-01T11:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_003",
+    "title": "feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service",
+    "labels": [
+      "migration",
+      "gcp",
+      "auth-service",
+      "phase-1"
+    ],
+    "metadata": {
+      "event_subtype": "commit",
+      "pr_id": "github_pr_003",
+      "pr_number": 89,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "e7b4bb0f-5c07-4fb3-b9d4-f2cd8787db20",
+    "source": "github",
+    "source_id": "y1z2a3b",
+    "author": "rohan_mehta",
+    "content": "chore(auth): remove boto3 dependency, add google-cloud-storage>=2.10.0",
+    "timestamp": "2023-05-02T09:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_003",
+    "title": "feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service",
+    "labels": [
+      "migration",
+      "gcp",
+      "auth-service",
+      "phase-1"
+    ],
+    "metadata": {
+      "event_subtype": "commit",
+      "pr_id": "github_pr_003",
+      "pr_number": 89,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "08ca944a-f2ec-4a6c-ad87-e35b4c289006",
+    "source": "github",
+    "source_id": "c4d5e6f",
+    "author": "rohan_mehta",
+    "content": "refactor(auth): migrate session artifact storage from S3 to GCS",
+    "timestamp": "2023-05-03T14:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_003",
+    "title": "feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service",
+    "labels": [
+      "migration",
+      "gcp",
+      "auth-service",
+      "phase-1"
+    ],
+    "metadata": {
+      "event_subtype": "commit",
+      "pr_id": "github_pr_003",
+      "pr_number": 89,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "23f9e1d4-1140-48d5-a1e7-7551c5148f89",
+    "source": "github",
+    "source_id": "g7h8i9j",
+    "author": "rohan_mehta",
+    "content": "test: comprehensive integration tests for GCS storage layer",
+    "timestamp": "2023-05-04T16:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_003",
+    "title": "feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service",
+    "labels": [
+      "migration",
+      "gcp",
+      "auth-service",
+      "phase-1"
+    ],
+    "metadata": {
+      "event_subtype": "commit",
+      "pr_id": "github_pr_003",
+      "pr_number": 89,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "0334d9c2-a7e0-454f-bd06-fe8a146c1b2d",
+    "source": "github",
+    "source_id": "github_rc_005",
+    "author": "arun_sharma",
+    "content": "This is the PR we've been working towards. GCS migration looks clean. Rohan you've implemented this exactly as the architecture decision specified. My one concern: make sure we have a rollback plan documented in JIRA before merging.",
+    "timestamp": "2023-05-02T13:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_003",
+    "title": "feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service",
+    "labels": [
+      "migration",
+      "gcp",
+      "auth-service",
+      "phase-1"
+    ],
+    "metadata": {
+      "event_subtype": "review_comment",
+      "pr_id": "github_pr_003",
+      "pr_number": 89,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "src/auth/storage/gcs_client.py",
+      "line": 15
+    }
+  },
+  {
+    "event_id": "f9803a05-84ee-4622-a827-17c90638e669",
+    "source": "github",
+    "source_id": "github_rc_006",
+    "author": "priya_nair",
+    "content": "I was skeptical of this migration but the implementation quality is high. The GCS client wrapper is well-abstracted. Approved.",
+    "timestamp": "2023-05-03T10:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_003",
+    "title": "feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service",
+    "labels": [
+      "migration",
+      "gcp",
+      "auth-service",
+      "phase-1"
+    ],
+    "metadata": {
+      "event_subtype": "review_comment",
+      "pr_id": "github_pr_003",
+      "pr_number": 89,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "src/auth/storage/gcs_client.py",
+      "line": 8
+    }
+  },
+  {
+    "event_id": "e00e52ff-b581-433a-bbf8-a9552bc93b38",
+    "source": "github",
+    "source_id": "github_rc_007",
+    "author": "vikram_patel",
+    "content": "LGTM. The GCS IAM role setup in the deployment manifests looks correct. Approved.",
+    "timestamp": "2023-05-04T11:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_003",
+    "title": "feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service",
+    "labels": [
+      "migration",
+      "gcp",
+      "auth-service",
+      "phase-1"
+    ],
+    "metadata": {
+      "event_subtype": "review_comment",
+      "pr_id": "github_pr_003",
+      "pr_number": 89,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "k8s/auth-service/deployment.yaml",
+      "line": 34
+    }
+  },
+  {
+    "event_id": "a1a5ccbf-f933-4936-8989-d9492fbd8fbd",
+    "source": "github",
+    "source_id": "github_pr_004",
+    "author": "rohan_mehta",
+    "content": "[PR #95] feat: GKE deployment manifests for authentication-service Kubernetes deployment manifests for deploying authentication-service to GKE cluster (us-central1). Includes: Deployment, Service, HorizontalPodAutoscaler, ConfigMap for GCP-specific settings, and Workload Identity annotations for GCS access.",
+    "timestamp": "2023-05-08T09:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_004",
+    "title": "feat: GKE deployment manifests for authentication-service",
+    "labels": [
+      "gcp",
+      "kubernetes",
+      "gke",
+      "auth-service"
+    ],
+    "metadata": {
+      "event_subtype": "pr_description",
+      "pr_id": "github_pr_004",
+      "pr_number": 95,
+      "state": "merged",
+      "reviewers": [
+        "arun_sharma",
+        "divya_krishnan"
+      ],
+      "merged_at": "2023-05-09T15:30:00Z",
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "616d5b3d-93d6-4805-97f3-f2eb6cd713c4",
+    "source": "github",
+    "source_id": "k1l2m3n",
+    "author": "rohan_mehta",
+    "content": "feat(k8s): GKE deployment manifests for auth-service with Workload Identity",
+    "timestamp": "2023-05-08T10:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_004",
+    "title": "feat: GKE deployment manifests for authentication-service",
+    "labels": [
+      "gcp",
+      "kubernetes",
+      "gke",
+      "auth-service"
+    ],
+    "metadata": {
+      "event_subtype": "commit",
+      "pr_id": "github_pr_004",
+      "pr_number": 95,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "b6089ca4-f44b-4e4d-aff1-f096e39f9f15",
+    "source": "github",
+    "source_id": "o4p5q6r",
+    "author": "rohan_mehta",
+    "content": "feat(k8s): HPA config for auth-service – scale 2 to 10 pods on CPU 70%",
+    "timestamp": "2023-05-09T09:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_004",
+    "title": "feat: GKE deployment manifests for authentication-service",
+    "labels": [
+      "gcp",
+      "kubernetes",
+      "gke",
+      "auth-service"
+    ],
+    "metadata": {
+      "event_subtype": "commit",
+      "pr_id": "github_pr_004",
+      "pr_number": 95,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "",
+      "line": null
+    }
+  },
+  {
+    "event_id": "9333edd6-416d-4561-afb5-e22368e671d2",
+    "source": "github",
+    "source_id": "github_rc_008",
+    "author": "divya_krishnan",
+    "content": "Security review passed. Workload Identity is configured correctly – no service account keys in the manifest. PodSecurityContext is restrictive. Approved.",
+    "timestamp": "2023-05-09T11:00:00+00:00",
+    "channel": "acme-platform",
+    "thread_id": "github_pr_004",
+    "title": "feat: GKE deployment manifests for authentication-service",
+    "labels": [
+      "gcp",
+      "kubernetes",
+      "gke",
+      "auth-service"
+    ],
+    "metadata": {
+      "event_subtype": "review_comment",
+      "pr_id": "github_pr_004",
+      "pr_number": 95,
+      "state": "",
+      "reviewers": [],
+      "merged_at": null,
+      "file": "k8s/auth-service/deployment.yaml",
+      "line": 55
+    }
+  },
+  {
+    "event_id": "a70c07d6-2071-4aad-a151-db74d2142dc6",
+    "source": "jira",
+    "source_id": "jira_001",
+    "author": "arun_sharma",
+    "content": "[CLOUD-98] Evaluate GCP vs AWS migration feasibility Conduct a comprehensive feasibility study for migrating our AWS infrastructure to GCP. Evaluate cost savings, technical risk, team readiness, and migration timeline. Deliverable: Architecture Decision Record (ADR-001).",
+    "timestamp": "2023-03-16T08:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_001",
+    "title": "Evaluate GCP vs AWS migration feasibility",
+    "labels": [
+      "migration",
+      "cloud",
+      "architecture",
+      "adr"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_description",
+      "ticket_id": "jira_001",
+      "ticket_key": "CLOUD-98",
+      "ticket_type": "Story",
+      "ticket_status": "Done",
+      "ticket_priority": "High",
+      "assignee": "arun_sharma",
+      "resolved_at": "2023-04-05T15:00:00Z",
+      "linked_issues": [
+        {
+          "type": "blocks",
+          "key": "CLOUD-101"
+        },
+        {
+          "type": "blocks",
+          "key": "CLOUD-105"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "637c7dda-452a-4291-9cf4-63d4b8ffbe43",
+    "source": "jira",
+    "source_id": "jira_c001",
+    "author": "priya_nair",
+    "content": "I've reviewed the cost analysis. The $84k/month AWS bill is accurate and trending upward. However, migration risk is real – we must budget for at least 6 months of parallel costs during transition.",
+    "timestamp": "2023-03-18T10:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_001",
+    "title": "Evaluate GCP vs AWS migration feasibility",
+    "labels": [
+      "migration",
+      "cloud",
+      "architecture",
+      "adr"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_comment",
+      "ticket_id": "jira_001",
+      "ticket_key": "CLOUD-98",
+      "ticket_type": "Story",
+      "ticket_status": "Done",
+      "ticket_priority": "High",
+      "assignee": "arun_sharma",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "blocks",
+          "key": "CLOUD-101"
+        },
+        {
+          "type": "blocks",
+          "key": "CLOUD-105"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "a767573d-6a9a-484f-99a5-a06cde43fbcd",
+    "source": "jira",
+    "source_id": "jira_c002",
+    "author": "rohan_mehta",
+    "content": "GKE performance spike results added to the ticket (see attachment). GKE outperforms EKS by 22% in our latency benchmarks. This significantly changes the cost-benefit calculation in favour of GCP.",
+    "timestamp": "2023-03-22T14:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_001",
+    "title": "Evaluate GCP vs AWS migration feasibility",
+    "labels": [
+      "migration",
+      "cloud",
+      "architecture",
+      "adr"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_comment",
+      "ticket_id": "jira_001",
+      "ticket_key": "CLOUD-98",
+      "ticket_type": "Story",
+      "ticket_status": "Done",
+      "ticket_priority": "High",
+      "assignee": "arun_sharma",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "blocks",
+          "key": "CLOUD-101"
+        },
+        {
+          "type": "blocks",
+          "key": "CLOUD-105"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "577a405b-72c8-45ec-870c-eda1bee1ddc1",
+    "source": "jira",
+    "source_id": "jira_c003",
+    "author": "arun_sharma",
+    "content": "ADR-001 published and approved by CTO. Decision: MIGRATE TO GCP. Phase 1 starts Q2 2023. Closing this ticket.",
+    "timestamp": "2023-04-05T15:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_001",
+    "title": "Evaluate GCP vs AWS migration feasibility",
+    "labels": [
+      "migration",
+      "cloud",
+      "architecture",
+      "adr"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_comment",
+      "ticket_id": "jira_001",
+      "ticket_key": "CLOUD-98",
+      "ticket_type": "Story",
+      "ticket_status": "Done",
+      "ticket_priority": "High",
+      "assignee": "arun_sharma",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "blocks",
+          "key": "CLOUD-101"
+        },
+        {
+          "type": "blocks",
+          "key": "CLOUD-105"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "6cd2b1f6-c08b-4b1d-9b1d-4abace9ac9fd",
+    "source": "jira",
+    "source_id": "jira_002",
+    "author": "arun_sharma",
+    "content": "[CLOUD-101] Phase 1 GCP Migration: GKE cluster provisioning and authentication-service Phase 1 of the GCP migration. Scope: provision GKE cluster in us-central1, migrate authentication-service and API gateway from AWS (EKS + S3 + RDS) to GCP (GKE + GCS + Cloud SQL). Target completion: June 30, 2023.",
+    "timestamp": "2023-04-06T09:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_002",
+    "title": "Phase 1 GCP Migration: GKE cluster provisioning and authentication-service",
+    "labels": [
+      "migration",
+      "gcp",
+      "gke",
+      "phase-1",
+      "authentication-service"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_description",
+      "ticket_id": "jira_002",
+      "ticket_key": "CLOUD-101",
+      "ticket_type": "Epic",
+      "ticket_status": "Done",
+      "ticket_priority": "High",
+      "assignee": "rohan_mehta",
+      "resolved_at": "2023-05-15T12:00:00Z",
+      "linked_issues": [
+        {
+          "type": "is blocked by",
+          "key": "CLOUD-98"
+        },
+        {
+          "type": "is blocked by",
+          "key": "SEC-055"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-102"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-103"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-104"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "79aebd35-71a4-462c-9c4f-7cb97088396c",
+    "source": "jira",
+    "source_id": "jira_c004",
+    "author": "rohan_mehta",
+    "content": "GKE cluster provisioned in us-central1. Node pool: 3x n2-standard-4 nodes, autoscaling 3-10. VPC network configured with private GKE nodes.",
+    "timestamp": "2023-04-10T09:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_002",
+    "title": "Phase 1 GCP Migration: GKE cluster provisioning and authentication-service",
+    "labels": [
+      "migration",
+      "gcp",
+      "gke",
+      "phase-1",
+      "authentication-service"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_comment",
+      "ticket_id": "jira_002",
+      "ticket_key": "CLOUD-101",
+      "ticket_type": "Epic",
+      "ticket_status": "Done",
+      "ticket_priority": "High",
+      "assignee": "rohan_mehta",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "is blocked by",
+          "key": "CLOUD-98"
+        },
+        {
+          "type": "is blocked by",
+          "key": "SEC-055"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-102"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-103"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-104"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "4f14a411-061a-42da-ad3c-5f231912da0c",
+    "source": "jira",
+    "source_id": "jira_c005",
+    "author": "vikram_patel",
+    "content": "Authentication-service containerized and pushed to GCP Artifact Registry. Workload Identity configured. Ready for GKE deployment.",
+    "timestamp": "2023-04-15T14:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_002",
+    "title": "Phase 1 GCP Migration: GKE cluster provisioning and authentication-service",
+    "labels": [
+      "migration",
+      "gcp",
+      "gke",
+      "phase-1",
+      "authentication-service"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_comment",
+      "ticket_id": "jira_002",
+      "ticket_key": "CLOUD-101",
+      "ticket_type": "Epic",
+      "ticket_status": "Done",
+      "ticket_priority": "High",
+      "assignee": "rohan_mehta",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "is blocked by",
+          "key": "CLOUD-98"
+        },
+        {
+          "type": "is blocked by",
+          "key": "SEC-055"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-102"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-103"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-104"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "28fb9a39-88bf-4fec-a29e-e9dda0bf740e",
+    "source": "jira",
+    "source_id": "jira_c006",
+    "author": "rohan_mehta",
+    "content": "Authentication-service deployed to GKE staging. Latency benchmarks: p50=12ms, p99=45ms. Exceeds targets. Ready for production cutover.",
+    "timestamp": "2023-05-10T10:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_002",
+    "title": "Phase 1 GCP Migration: GKE cluster provisioning and authentication-service",
+    "labels": [
+      "migration",
+      "gcp",
+      "gke",
+      "phase-1",
+      "authentication-service"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_comment",
+      "ticket_id": "jira_002",
+      "ticket_key": "CLOUD-101",
+      "ticket_type": "Epic",
+      "ticket_status": "Done",
+      "ticket_priority": "High",
+      "assignee": "rohan_mehta",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "is blocked by",
+          "key": "CLOUD-98"
+        },
+        {
+          "type": "is blocked by",
+          "key": "SEC-055"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-102"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-103"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-104"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "c4f43e2d-0fc0-48ec-827f-42ed6d33283d",
+    "source": "jira",
+    "source_id": "jira_c007",
+    "author": "arun_sharma",
+    "content": "Phase 1 migration COMPLETE. Auth-service and API gateway live on GCP. AWS resources decommissioned. Actual cost: $12k migration spend, projected monthly savings: $31k. Closing epic.",
+    "timestamp": "2023-05-15T12:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_002",
+    "title": "Phase 1 GCP Migration: GKE cluster provisioning and authentication-service",
+    "labels": [
+      "migration",
+      "gcp",
+      "gke",
+      "phase-1",
+      "authentication-service"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_comment",
+      "ticket_id": "jira_002",
+      "ticket_key": "CLOUD-101",
+      "ticket_type": "Epic",
+      "ticket_status": "Done",
+      "ticket_priority": "High",
+      "assignee": "rohan_mehta",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "is blocked by",
+          "key": "CLOUD-98"
+        },
+        {
+          "type": "is blocked by",
+          "key": "SEC-055"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-102"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-103"
+        },
+        {
+          "type": "subtask",
+          "key": "CLOUD-104"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "64b83150-ab7d-4318-bc83-1243314e30f1",
+    "source": "jira",
+    "source_id": "jira_003",
+    "author": "divya_krishnan",
+    "content": "[SEC-055] CRITICAL: JWT token rotation race condition in authentication-service CRITICAL SECURITY BUG: The JWT secret rotation in auth-service has a race condition. During the rotation window (approximately 200ms), concurrent requests can authenticate with both old and new secrets, creating a window for token confusion attacks. Must be fixed before GCP production deployment.",
+    "timestamp": "2023-04-12T08:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_003",
+    "title": "CRITICAL: JWT token rotation race condition in authentication-service",
+    "labels": [
+      "security",
+      "critical",
+      "auth-service",
+      "jwt",
+      "race-condition"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_description",
+      "ticket_id": "jira_003",
+      "ticket_key": "SEC-055",
+      "ticket_type": "Bug",
+      "ticket_status": "Done",
+      "ticket_priority": "Critical",
+      "assignee": "vikram_patel",
+      "resolved_at": "2023-04-13T18:00:00Z",
+      "linked_issues": [
+        {
+          "type": "blocks",
+          "key": "CLOUD-101"
+        },
+        {
+          "type": "related to",
+          "key": "CLOUD-98"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "4bcc94f8-b6f9-4703-a4f9-33e413521ce0",
+    "source": "jira",
+    "source_id": "jira_c008",
+    "author": "divya_krishnan",
+    "content": "Root cause identified: two concurrent token validation threads read the secret value before rotation completes. Fix: implement distributed locking. I recommend Redis Redlock. Assigning to Vikram as auth-service owner.",
+    "timestamp": "2023-04-12T08:10:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_003",
+    "title": "CRITICAL: JWT token rotation race condition in authentication-service",
+    "labels": [
+      "security",
+      "critical",
+      "auth-service",
+      "jwt",
+      "race-condition"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_comment",
+      "ticket_id": "jira_003",
+      "ticket_key": "SEC-055",
+      "ticket_type": "Bug",
+      "ticket_status": "Done",
+      "ticket_priority": "Critical",
+      "assignee": "vikram_patel",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "blocks",
+          "key": "CLOUD-101"
+        },
+        {
+          "type": "related to",
+          "key": "CLOUD-98"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "5a33ef04-5f88-4394-aef1-475ed465afa9",
+    "source": "jira",
+    "source_id": "jira_c009",
+    "author": "vikram_patel",
+    "content": "PR #89 raised with Redlock implementation. Tests pass. Requesting expedited review from Divya and Rohan. CVSSv3 Score: 8.1 (High).",
+    "timestamp": "2023-04-12T09:30:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_003",
+    "title": "CRITICAL: JWT token rotation race condition in authentication-service",
+    "labels": [
+      "security",
+      "critical",
+      "auth-service",
+      "jwt",
+      "race-condition"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_comment",
+      "ticket_id": "jira_003",
+      "ticket_key": "SEC-055",
+      "ticket_type": "Bug",
+      "ticket_status": "Done",
+      "ticket_priority": "Critical",
+      "assignee": "vikram_patel",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "blocks",
+          "key": "CLOUD-101"
+        },
+        {
+          "type": "related to",
+          "key": "CLOUD-98"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "be41ad09-568b-4817-acde-c299e1dd77cc",
+    "source": "jira",
+    "source_id": "jira_c010",
+    "author": "divya_krishnan",
+    "content": "PR #89 approved and merged. Issue resolved. Regression tests added. Closing ticket.",
+    "timestamp": "2023-04-13T17:30:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_003",
+    "title": "CRITICAL: JWT token rotation race condition in authentication-service",
+    "labels": [
+      "security",
+      "critical",
+      "auth-service",
+      "jwt",
+      "race-condition"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_comment",
+      "ticket_id": "jira_003",
+      "ticket_key": "SEC-055",
+      "ticket_type": "Bug",
+      "ticket_status": "Done",
+      "ticket_priority": "Critical",
+      "assignee": "vikram_patel",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "blocks",
+          "key": "CLOUD-101"
+        },
+        {
+          "type": "related to",
+          "key": "CLOUD-98"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "f35eb16f-4df7-4371-b0a0-cb75de384417",
+    "source": "jira",
+    "source_id": "jira_004",
+    "author": "rohan_mehta",
+    "content": "[CLOUD-102] Migrate authentication-service storage: AWS S3 → Google Cloud Storage Replace all AWS S3 calls in authentication-service with Google Cloud Storage (GCS). Remove boto3 dependency. Add google-cloud-storage library. Implement GCS IAM roles for Workload Identity authentication.",
+    "timestamp": "2023-04-20T09:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_004",
+    "title": "Migrate authentication-service storage: AWS S3 → Google Cloud Storage",
+    "labels": [
+      "migration",
+      "gcp",
+      "gcs",
+      "s3",
+      "auth-service"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_description",
+      "ticket_id": "jira_004",
+      "ticket_key": "CLOUD-102",
+      "ticket_type": "Task",
+      "ticket_status": "Done",
+      "ticket_priority": "High",
+      "assignee": "rohan_mehta",
+      "resolved_at": "2023-05-05T19:00:00Z",
+      "linked_issues": [
+        {
+          "type": "is part of",
+          "key": "CLOUD-101"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "61597c96-ce76-4ca3-8c7a-b562060379ea",
+    "source": "jira",
+    "source_id": "jira_c011",
+    "author": "rohan_mehta",
+    "content": "PR #89 merged. AWS S3 fully replaced with GCS in auth-service. All integration tests pass. Closing.",
+    "timestamp": "2023-05-05T18:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_004",
+    "title": "Migrate authentication-service storage: AWS S3 → Google Cloud Storage",
+    "labels": [
+      "migration",
+      "gcp",
+      "gcs",
+      "s3",
+      "auth-service"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_comment",
+      "ticket_id": "jira_004",
+      "ticket_key": "CLOUD-102",
+      "ticket_type": "Task",
+      "ticket_status": "Done",
+      "ticket_priority": "High",
+      "assignee": "rohan_mehta",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "is part of",
+          "key": "CLOUD-101"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "b17da321-ec13-4f02-b13b-68723156e377",
+    "source": "jira",
+    "source_id": "jira_005",
+    "author": "arun_sharma",
+    "content": "[CLOUD-103] Provision GKE cluster – us-central1 region Provision a production-grade GKE Autopilot cluster in us-central1. Configure: private nodes, VPC-native networking, Workload Identity, Cloud Armor, Binary Authorization.",
+    "timestamp": "2023-04-06T09:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_005",
+    "title": "Provision GKE cluster – us-central1 region",
+    "labels": [
+      "gcp",
+      "gke",
+      "infrastructure"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_description",
+      "ticket_id": "jira_005",
+      "ticket_key": "CLOUD-103",
+      "ticket_type": "Task",
+      "ticket_status": "Done",
+      "ticket_priority": "High",
+      "assignee": "rohan_mehta",
+      "resolved_at": "2023-04-12T16:00:00Z",
+      "linked_issues": [
+        {
+          "type": "is part of",
+          "key": "CLOUD-101"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "ed2f026c-6f68-49bf-b950-1e7b2351bb0a",
+    "source": "jira",
+    "source_id": "jira_c012",
+    "author": "rohan_mehta",
+    "content": "GKE cluster provisioned. All configs applied via Terraform. Cluster health: GREEN. Closing.",
+    "timestamp": "2023-04-12T16:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_005",
+    "title": "Provision GKE cluster – us-central1 region",
+    "labels": [
+      "gcp",
+      "gke",
+      "infrastructure"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_comment",
+      "ticket_id": "jira_005",
+      "ticket_key": "CLOUD-103",
+      "ticket_type": "Task",
+      "ticket_status": "Done",
+      "ticket_priority": "High",
+      "assignee": "rohan_mehta",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "is part of",
+          "key": "CLOUD-101"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "9ea496d2-9541-4e98-b403-9f59429ab68a",
+    "source": "jira",
+    "source_id": "jira_006",
+    "author": "divya_krishnan",
+    "content": "[CLOUD-105] Team GCP training & certification plan Develop and execute a GCP training plan for the platform engineering team. Target: GCP Professional Cloud Architect certification for senior engineers by Q3 2023. Budget approved: $15k.",
+    "timestamp": "2023-03-20T09:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_006",
+    "title": "Team GCP training & certification plan",
+    "labels": [
+      "training",
+      "gcp",
+      "team-development"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_description",
+      "ticket_id": "jira_006",
+      "ticket_key": "CLOUD-105",
+      "ticket_type": "Task",
+      "ticket_status": "In Progress",
+      "ticket_priority": "Medium",
+      "assignee": "divya_krishnan",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "is blocked by",
+          "key": "CLOUD-98"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "65f6af5f-5693-41fc-aded-d070694acabc",
+    "source": "jira",
+    "source_id": "jira_c013",
+    "author": "divya_krishnan",
+    "content": "Raised concern to leadership: without adequate training, the GCP migration is high-risk. Proposed 3-month ramp-up. Approved by Arun.",
+    "timestamp": "2023-03-25T11:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_006",
+    "title": "Team GCP training & certification plan",
+    "labels": [
+      "training",
+      "gcp",
+      "team-development"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_comment",
+      "ticket_id": "jira_006",
+      "ticket_key": "CLOUD-105",
+      "ticket_type": "Task",
+      "ticket_status": "In Progress",
+      "ticket_priority": "Medium",
+      "assignee": "divya_krishnan",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "is blocked by",
+          "key": "CLOUD-98"
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "10848179-59c6-4df3-9b97-7ebad43c777a",
+    "source": "jira",
+    "source_id": "jira_c014",
+    "author": "divya_krishnan",
+    "content": "Rohan Mehta and Vikram Patel enrolled in GCP Professional Cloud Architect course. Expected completion: August 2023.",
+    "timestamp": "2023-05-30T10:00:00+00:00",
+    "channel": "CLOUD",
+    "thread_id": "jira_006",
+    "title": "Team GCP training & certification plan",
+    "labels": [
+      "training",
+      "gcp",
+      "team-development"
+    ],
+    "metadata": {
+      "event_subtype": "ticket_comment",
+      "ticket_id": "jira_006",
+      "ticket_key": "CLOUD-105",
+      "ticket_type": "Task",
+      "ticket_status": "In Progress",
+      "ticket_priority": "Medium",
+      "assignee": "divya_krishnan",
+      "resolved_at": null,
+      "linked_issues": [
+        {
+          "type": "is blocked by",
+          "key": "CLOUD-98"
+        }
+      ]
+    }
+  }
+]
