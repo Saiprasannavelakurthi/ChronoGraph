@@ -36,10 +36,14 @@ class Config:
                     "Groq API key missing. Please set GROQ_API_KEY in your environment or .env file."
                 )
 
+            model_name = cls.LLM_MODEL
+            if model_name in ("llama-3.1-8b-instant", "llama-3.3-70b-versatile", "llama-3.3-70b", "llama3-70b-8192", "llama3-8b-8192"):
+                model_name = "openai/gpt-oss-120b"
+
             try:
                 from llama_index.llms.groq import Groq
                 return Groq(
-                    model=cls.LLM_MODEL,
+                    model=model_name,
                     api_key=api_key,
                     temperature=cls.LLM_TEMPERATURE
                 )
@@ -49,7 +53,7 @@ class Config:
             try:
                 from llama_index.llms.openai import OpenAI
                 return OpenAI(
-                    model=cls.LLM_MODEL,
+                    model=model_name,
                     api_base="https://api.groq.com/openai/v1",
                     api_key=api_key,
                     temperature=cls.LLM_TEMPERATURE
