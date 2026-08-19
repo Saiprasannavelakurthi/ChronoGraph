@@ -74,7 +74,11 @@ airflow/dags/__pycache__/
 
 # ─── Node / UI ─────────────────────────────────────────────────
 node_modules/
+**/node_modules/
 dist/
+**/dist/
+.vite/
+**/.vite/
 .eslintcache
 
 # ─── Airflow ───────────────────────────────────────────────────
