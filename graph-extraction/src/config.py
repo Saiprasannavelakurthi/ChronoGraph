@@ -12,7 +12,7 @@ class Config:
     """Configuration settings for LLM Graph Extraction."""
 
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "groq").lower()
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
+    LLM_MODEL: str = os.getenv("GROQ_MODEL") or os.getenv("LLM_MODEL", "openai/gpt-oss-120b")
     LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
     LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "0.0"))
     LLM_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY") or os.getenv("LLM_API_KEY", None)
