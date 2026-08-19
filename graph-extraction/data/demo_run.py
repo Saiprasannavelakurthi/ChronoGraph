@@ -1,5 +1,11 @@
 import json
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock
+
+# Add project root to sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from src.pipeline import process_text
 from src.extractor import GraphExtractor
 from src.validator import validate_extraction, ExtractionValidationError
