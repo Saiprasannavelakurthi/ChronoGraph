@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-25T11:23:36.187858+00:00",
+  "generated_at": "2026-08-25T11:35:14.693622+00:00",
   "pipeline_stage": "Week 2 – Graph Preparation (Karkuvel)",
   "input_file": "D:\\ChronoGraph\\data-ingestion\\data\\processed\\extracted_triples.json",
   "output_file": "D:\\ChronoGraph\\data-ingestion\\data\\processed\\graph_ready_triples.json",
