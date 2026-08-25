@@ -1,0 +1,118 @@
+{
+  "entities": [
+    {
+      "id": "person_aathi",
+      "name": "Aathi",
+      "type": "PERSON"
+    },
+    {
+      "id": "person_karkuvel",
+      "name": "Karkuvel",
+      "type": "PERSON"
+    },
+    {
+      "id": "repository_chronograph",
+      "name": "ChronoGraph",
+      "type": "REPOSITORY"
+    },
+    {
+      "id": "commit_abc1234",
+      "name": "abc1234",
+      "type": "COMMIT"
+    },
+    {
+      "id": "pull_request_24",
+      "name": "#24",
+      "type": "PULL_REQUEST"
+    },
+    {
+      "id": "issue_cg_102",
+      "name": "CG-102",
+      "type": "ISSUE"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "Aathi",
+      "relation": "MENTIONED",
+      "target": "Karkuvel"
+    },
+    {
+      "source": "Karkuvel",
+      "relation": "COMMITTED",
+      "target": "abc1234"
+    },
+    {
+      "source": "Karkuvel",
+      "relation": "OPENED",
+      "target": "#24"
+    },
+    {
+      "source": "Aathi",
+      "relation": "REVIEWED",
+      "target": "#24"
+    },
+    {
+      "source": "Aathi",
+      "relation": "MERGED",
+      "target": "#24"
+    },
+    {
+      "source": "Aathi",
+      "relation": "ASSIGNED_TO",
+      "target": "CG-102"
+    }
+  ],
+  "triples": [
+    {
+      "subject": "Aathi",
+      "predicate": "MENTIONED",
+      "object": "Karkuvel"
+    },
+    {
+      "subject": "Karkuvel",
+      "predicate": "COMMITTED",
+      "object": "abc1234"
+    },
+    {
+      "subject": "Karkuvel",
+      "predicate": "OPENED",
+      "object": "#24"
+    },
+    {
+      "subject": "Aathi",
+      "predicate": "REVIEWED",
+      "object": "#24"
+    },
+    {
+      "subject": "Aathi",
+      "predicate": "MERGED",
+      "object": "#24"
+    },
+    {
+      "subject": "Aathi",
+      "predicate": "ASSIGNED_TO",
+      "object": "CG-102"
+    }
+  ],
+  "metadata": {
+    "records": [
+      {
+        "source": "slack",
+        "channel": "#dev-chat",
+        "timestamp": "2026-08-10T10:15:30Z"
+      },
+      {
+        "source": "github",
+        "repository": "ChronoGraph",
+        "timestamp": "2026-08-10T11:45:10Z"
+      },
+      {
+        "source": "jira",
+        "project": "CG",
+        "timestamp": "2026-08-10T14:20:00Z"
+      }
+    ]
+  },
+  "is_valid": true
+}

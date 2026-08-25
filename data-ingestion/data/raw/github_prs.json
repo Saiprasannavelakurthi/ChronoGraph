@@ -1,0 +1,213 @@
+{
+  "repository": "acme-platform",
+  "organization": "acme-engineering",
+  "export_date": "2024-01-15T00:00:00Z",
+  "pull_requests": [
+    {
+      "pr_id": "github_pr_001",
+      "number": 78,
+      "title": "feat: Deprecate AWS SDK v1 – replace with boto3 v2 adapter",
+      "author": "vikram_patel",
+      "reviewers": ["arun_sharma", "rohan_mehta"],
+      "state": "merged",
+      "base_branch": "main",
+      "head_branch": "feature/aws-sdk-v2-migration",
+      "created_at": "2023-03-20T09:00:00Z",
+      "merged_at": "2023-03-22T16:30:00Z",
+      "closed_at": "2023-03-22T16:30:00Z",
+      "description": "This PR removes all AWS SDK v1 usage from the authentication-service and api-gateway. Replaces with boto3 v2 compatible adapter layer to prepare for eventual GCP migration. Deprecated: S3Client_v1, SQSClient_v1.",
+      "labels": ["migration", "aws", "breaking-change"],
+      "commits": [
+        {
+          "commit_sha": "a1b2c3d",
+          "author": "vikram_patel",
+          "timestamp": "2023-03-20T09:30:00Z",
+          "message": "chore: remove deprecated AWS SDK v1 imports from auth-service"
+        },
+        {
+          "commit_sha": "e4f5g6h",
+          "author": "vikram_patel",
+          "timestamp": "2023-03-21T11:00:00Z",
+          "message": "feat: implement boto3 v2 adapter for S3 operations in auth-service"
+        },
+        {
+          "commit_sha": "i7j8k9l",
+          "author": "vikram_patel",
+          "timestamp": "2023-03-22T14:00:00Z",
+          "message": "test: add unit tests for boto3 v2 adapter layer"
+        }
+      ],
+      "review_comments": [
+        {
+          "comment_id": "github_rc_001",
+          "author": "arun_sharma",
+          "timestamp": "2023-03-21T13:00:00Z",
+          "body": "Good work Vikram. The adapter pattern here is solid – it will make the eventual GCP migration much cleaner since we can swap boto3 calls for GCS equivalents. LGTM but please add a deprecation warning in the old entry-points.",
+          "file": "src/auth/storage/s3_client.py",
+          "line": 42
+        },
+        {
+          "comment_id": "github_rc_002",
+          "author": "rohan_mehta",
+          "timestamp": "2023-03-22T09:00:00Z",
+          "body": "Approved. This is exactly the abstraction we need for the GCP migration. The boto3 v2 adapter decouples our code from AWS-specific APIs nicely.",
+          "file": "src/auth/storage/adapter.py",
+          "line": 18
+        }
+      ]
+    },
+    {
+      "pr_id": "github_pr_002",
+      "number": 82,
+      "title": "fix: JWT race condition in token rotation – use Redis distributed lock",
+      "author": "vikram_patel",
+      "reviewers": ["divya_krishnan", "rohan_mehta"],
+      "state": "merged",
+      "base_branch": "main",
+      "head_branch": "fix/jwt-race-condition-sec-055",
+      "created_at": "2023-04-12T09:30:00Z",
+      "merged_at": "2023-04-13T17:00:00Z",
+      "closed_at": "2023-04-13T17:00:00Z",
+      "description": "Critical security fix for SEC-055. The JWT secret rotation had a race condition where two concurrent requests could both read the old secret during rotation. Fixed with Redis distributed locking (Redlock algorithm) to ensure atomic token rotation.",
+      "labels": ["security", "critical", "auth-service"],
+      "commits": [
+        {
+          "commit_sha": "m1n2o3p",
+          "author": "vikram_patel",
+          "timestamp": "2023-04-12T10:00:00Z",
+          "message": "fix(auth): implement Redlock distributed lock for JWT secret rotation"
+        },
+        {
+          "commit_sha": "q4r5s6t",
+          "author": "vikram_patel",
+          "timestamp": "2023-04-12T15:00:00Z",
+          "message": "test(auth): add concurrent token rotation integration tests"
+        }
+      ],
+      "review_comments": [
+        {
+          "comment_id": "github_rc_003",
+          "author": "divya_krishnan",
+          "timestamp": "2023-04-13T10:00:00Z",
+          "body": "Excellent fix Vikram. The Redlock implementation is correct. Lock TTL of 5s is appropriate. I've verified the fix against the race condition I originally identified in SEC-055. Approved.",
+          "file": "src/auth/tokens/rotation.py",
+          "line": 67
+        },
+        {
+          "comment_id": "github_rc_004",
+          "author": "rohan_mehta",
+          "timestamp": "2023-04-13T14:00:00Z",
+          "body": "LGTM. Redis dependency is already in our stack. One note: ensure Redis connection pool is sized correctly for GKE pod autoscaling.",
+          "file": "src/auth/tokens/rotation.py",
+          "line": 23
+        }
+      ]
+    },
+    {
+      "pr_id": "github_pr_003",
+      "number": 89,
+      "title": "feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service",
+      "author": "rohan_mehta",
+      "reviewers": ["arun_sharma", "priya_nair", "vikram_patel"],
+      "state": "merged",
+      "base_branch": "main",
+      "head_branch": "feature/gcp-gcs-migration-auth",
+      "created_at": "2023-05-01T10:00:00Z",
+      "merged_at": "2023-05-05T18:00:00Z",
+      "closed_at": "2023-05-05T18:00:00Z",
+      "description": "Phase 1 GCP migration: replaces all AWS S3 usage in authentication-service with Google Cloud Storage (GCS). Removes boto3 dependency from auth-service module. Adds google-cloud-storage to requirements. Implements GCS-backed credential storage and session artifact storage.",
+      "labels": ["migration", "gcp", "auth-service", "phase-1"],
+      "commits": [
+        {
+          "commit_sha": "u7v8w9x",
+          "author": "rohan_mehta",
+          "timestamp": "2023-05-01T11:00:00Z",
+          "message": "feat(auth): add GCS client wrapper for credential storage"
+        },
+        {
+          "commit_sha": "y1z2a3b",
+          "author": "rohan_mehta",
+          "timestamp": "2023-05-02T09:00:00Z",
+          "message": "chore(auth): remove boto3 dependency, add google-cloud-storage>=2.10.0"
+        },
+        {
+          "commit_sha": "c4d5e6f",
+          "author": "rohan_mehta",
+          "timestamp": "2023-05-03T14:00:00Z",
+          "message": "refactor(auth): migrate session artifact storage from S3 to GCS"
+        },
+        {
+          "commit_sha": "g7h8i9j",
+          "author": "rohan_mehta",
+          "timestamp": "2023-05-04T16:00:00Z",
+          "message": "test: comprehensive integration tests for GCS storage layer"
+        }
+      ],
+      "review_comments": [
+        {
+          "comment_id": "github_rc_005",
+          "author": "arun_sharma",
+          "timestamp": "2023-05-02T13:00:00Z",
+          "body": "This is the PR we've been working towards. GCS migration looks clean. Rohan you've implemented this exactly as the architecture decision specified. My one concern: make sure we have a rollback plan documented in JIRA before merging.",
+          "file": "src/auth/storage/gcs_client.py",
+          "line": 15
+        },
+        {
+          "comment_id": "github_rc_006",
+          "author": "priya_nair",
+          "timestamp": "2023-05-03T10:00:00Z",
+          "body": "I was skeptical of this migration but the implementation quality is high. The GCS client wrapper is well-abstracted. Approved.",
+          "file": "src/auth/storage/gcs_client.py",
+          "line": 8
+        },
+        {
+          "comment_id": "github_rc_007",
+          "author": "vikram_patel",
+          "timestamp": "2023-05-04T11:00:00Z",
+          "body": "LGTM. The GCS IAM role setup in the deployment manifests looks correct. Approved.",
+          "file": "k8s/auth-service/deployment.yaml",
+          "line": 34
+        }
+      ]
+    },
+    {
+      "pr_id": "github_pr_004",
+      "number": 95,
+      "title": "feat: GKE deployment manifests for authentication-service",
+      "author": "rohan_mehta",
+      "reviewers": ["arun_sharma", "divya_krishnan"],
+      "state": "merged",
+      "base_branch": "main",
+      "head_branch": "feature/gke-auth-deployment",
+      "created_at": "2023-05-08T09:00:00Z",
+      "merged_at": "2023-05-09T15:30:00Z",
+      "closed_at": "2023-05-09T15:30:00Z",
+      "description": "Kubernetes deployment manifests for deploying authentication-service to GKE cluster (us-central1). Includes: Deployment, Service, HorizontalPodAutoscaler, ConfigMap for GCP-specific settings, and Workload Identity annotations for GCS access.",
+      "labels": ["gcp", "kubernetes", "gke", "auth-service"],
+      "commits": [
+        {
+          "commit_sha": "k1l2m3n",
+          "author": "rohan_mehta",
+          "timestamp": "2023-05-08T10:00:00Z",
+          "message": "feat(k8s): GKE deployment manifests for auth-service with Workload Identity"
+        },
+        {
+          "commit_sha": "o4p5q6r",
+          "author": "rohan_mehta",
+          "timestamp": "2023-05-09T09:00:00Z",
+          "message": "feat(k8s): HPA config for auth-service – scale 2 to 10 pods on CPU 70%"
+        }
+      ],
+      "review_comments": [
+        {
+          "comment_id": "github_rc_008",
+          "author": "divya_krishnan",
+          "timestamp": "2023-05-09T11:00:00Z",
+          "body": "Security review passed. Workload Identity is configured correctly – no service account keys in the manifest. PodSecurityContext is restrictive. Approved.",
+          "file": "k8s/auth-service/deployment.yaml",
+          "line": 55
+        }
+      ]
+    }
+  ]
+}

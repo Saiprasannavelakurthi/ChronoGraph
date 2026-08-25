@@ -1,0 +1,276 @@
+{
+  "entities": [
+    {
+      "id": "person_arun_sharma",
+      "name": "Arun_Sharma",
+      "type": "PERSON"
+    },
+    {
+      "id": "other_gcp",
+      "name": "GCP",
+      "type": "OTHER"
+    },
+    {
+      "id": "other_aws",
+      "name": "AWS",
+      "type": "OTHER"
+    },
+    {
+      "id": "service_authentication_service",
+      "name": "Authentication_Service",
+      "type": "SERVICE"
+    },
+    {
+      "id": "person_priya_nair",
+      "name": "Priya_Nair",
+      "type": "PERSON"
+    },
+    {
+      "id": "person_karkuvel",
+      "name": "Karkuvel",
+      "type": "PERSON"
+    },
+    {
+      "id": "repository_chronograph",
+      "name": "ChronoGraph",
+      "type": "REPOSITORY"
+    },
+    {
+      "id": "pull_request_24",
+      "name": "#24",
+      "type": "PULL_REQUEST"
+    },
+    {
+      "id": "person_aathi",
+      "name": "Aathi",
+      "type": "PERSON"
+    },
+    {
+      "id": "issue_cg_102",
+      "name": "CG-102",
+      "type": "ISSUE"
+    },
+    {
+      "id": "project_chronograph",
+      "name": "ChronoGraph",
+      "type": "PROJECT"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "Arun_Sharma",
+      "relation": "OTHER",
+      "target": "GCP"
+    },
+    {
+      "source": "Arun_Sharma",
+      "relation": "OTHER",
+      "target": "AWS"
+    },
+    {
+      "source": "Arun_Sharma",
+      "relation": "OTHER",
+      "target": "Authentication_Service"
+    },
+    {
+      "source": "Priya_Nair",
+      "relation": "OTHER",
+      "target": "AWS"
+    },
+    {
+      "source": "Priya_Nair",
+      "relation": "OTHER",
+      "target": "GCP"
+    },
+    {
+      "source": "Karkuvel",
+      "relation": "OPENED",
+      "target": "#24"
+    },
+    {
+      "source": "#24",
+      "relation": "PART_OF",
+      "target": "ChronoGraph"
+    },
+    {
+      "source": "Aathi",
+      "relation": "REVIEWED",
+      "target": "#24"
+    },
+    {
+      "source": "Aathi",
+      "relation": "MERGED",
+      "target": "#24"
+    },
+    {
+      "source": "Aathi",
+      "relation": "ASSIGNED_TO",
+      "target": "CG-102"
+    },
+    {
+      "source": "CG-102",
+      "relation": "PART_OF",
+      "target": "ChronoGraph"
+    }
+  ],
+  "triples": [
+    {
+      "subject": "Arun_Sharma",
+      "predicate": "OTHER",
+      "object": "GCP"
+    },
+    {
+      "subject": "Arun_Sharma",
+      "predicate": "OTHER",
+      "object": "AWS"
+    },
+    {
+      "subject": "Arun_Sharma",
+      "predicate": "OTHER",
+      "object": "Authentication_Service"
+    },
+    {
+      "subject": "Priya_Nair",
+      "predicate": "OTHER",
+      "object": "AWS"
+    },
+    {
+      "subject": "Priya_Nair",
+      "predicate": "OTHER",
+      "object": "GCP"
+    },
+    {
+      "subject": "Karkuvel",
+      "predicate": "OPENED",
+      "object": "#24"
+    },
+    {
+      "subject": "#24",
+      "predicate": "PART_OF",
+      "object": "ChronoGraph"
+    },
+    {
+      "subject": "Aathi",
+      "predicate": "REVIEWED",
+      "object": "#24"
+    },
+    {
+      "subject": "Aathi",
+      "predicate": "MERGED",
+      "object": "#24"
+    },
+    {
+      "subject": "Aathi",
+      "predicate": "ASSIGNED_TO",
+      "object": "CG-102"
+    },
+    {
+      "subject": "CG-102",
+      "predicate": "PART_OF",
+      "object": "ChronoGraph"
+    }
+  ],
+  "metadata": {
+    "records": [
+      {
+        "event_id": "bcbab6c3-f75a-4e1a-961d-6ad7c63c2019",
+        "source_id": "slack_001",
+        "author": "arun_sharma",
+        "timestamp": "2023-03-15T10:30:00+00:00",
+        "channel": "infra-migration",
+        "title": null,
+        "workspace": "acme-engineering",
+        "channel_id": "C001",
+        "display_name": "Arun Sharma",
+        "reactions": [
+          "+1:3",
+          "eyes:2"
+        ],
+        "source": "slack"
+      },
+      {
+        "event_id": "0f9d70c4-5cff-45b3-bafa-69338092cee4",
+        "source_id": "slack_002",
+        "author": "priya_nair",
+        "timestamp": "2023-03-15T10:48:00+00:00",
+        "channel": "infra-migration",
+        "title": null,
+        "workspace": "acme-engineering",
+        "channel_id": "C001",
+        "display_name": "Priya Nair",
+        "reactions": [
+          "thinking_face:5"
+        ],
+        "source": "slack"
+      },
+      {
+        "event_id": "43f485a0-70c2-49c9-8af1-96faf3afdb81",
+        "source_id": "github_pr_001",
+        "author": "vikram_patel",
+        "timestamp": "2023-03-20T09:00:00+00:00",
+        "channel": "acme-platform",
+        "title": "feat: Deprecate AWS SDK v1 \u2013 replace with boto3 v2 adapter",
+        "event_subtype": "pr_description",
+        "pr_id": "github_pr_001",
+        "pr_number": 78,
+        "state": "merged",
+        "reviewers": [
+          "arun_sharma",
+          "rohan_mehta"
+        ],
+        "merged_at": "2023-03-22T16:30:00Z",
+        "file": "",
+        "line": null,
+        "source": "github"
+      },
+      {
+        "event_id": "6723539d-b558-4dbd-afca-b4ff68afe03e",
+        "source_id": "a1b2c3d",
+        "author": "vikram_patel",
+        "timestamp": "2023-03-20T09:30:00+00:00",
+        "channel": "acme-platform",
+        "title": "feat: Deprecate AWS SDK v1 \u2013 replace with boto3 v2 adapter",
+        "event_subtype": "commit",
+        "pr_id": "github_pr_001",
+        "pr_number": 78,
+        "state": "",
+        "reviewers": [],
+        "merged_at": null,
+        "file": "",
+        "line": null,
+        "source": "github"
+      },
+      {
+        "event_id": "a70c07d6-2071-4aad-a151-db74d2142dc6",
+        "source_id": "jira_001",
+        "author": "arun_sharma",
+        "timestamp": "2023-03-16T08:00:00+00:00",
+        "channel": "CLOUD",
+        "title": "Evaluate GCP vs AWS migration feasibility",
+        "event_subtype": "ticket_description",
+        "ticket_id": "jira_001",
+        "ticket_key": "CLOUD-98",
+        "ticket_type": "Story",
+        "ticket_status": "Done",
+        "ticket_priority": "High",
+        "assignee": "arun_sharma",
+        "resolved_at": "2023-04-05T15:00:00Z",
+        "linked_issues": [
+          {
+            "type": "blocks",
+            "key": "CLOUD-101"
+          },
+          {
+            "type": "blocks",
+            "key": "CLOUD-105"
+          }
+        ],
+        "source": "jira"
+      }
+    ]
+  },
+  "is_valid": true,
+  "extraction_mode": "deterministic_mock",
+  "events_processed": 5,
+  "total_dataset_events": 59
+}

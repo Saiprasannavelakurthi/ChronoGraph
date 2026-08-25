@@ -24,8 +24,6 @@
 - [Airflow Orchestration](#-airflow-orchestration)
 - [Testing](#-testing)
 - [Pipeline Metrics & Summary](#-pipeline-metrics--summary)
-- [Team Ownership & Review Structure](#-team-ownership--review-structure)
-- [Automated Mid-Review Pipeline Verification](#-automated-mid-review-pipeline-verification)
 
 ---
 
@@ -61,7 +59,7 @@ Modern engineering organizations produce massive volumes of decision history acr
        Neo4j — Downstream Module
 ```
 
-Neo4j graph construction is not implemented in Karkuvel's module. The `graph_ready_triples.json` file is the validated and normalized data contract that is handed off to the downstream Neo4j integration. Karkuvel's responsibility ends at graph-ready data preparation, and `data/processed/graph_ready_triples.json` is the explicit hand-off point to the downstream Neo4j module owned by the appropriate team member.
+Neo4j graph construction is not implemented in Karkuvel's Week 2 module. The `graph_ready_triples.json` file is the validated and normalized data contract that is handed off to the downstream Neo4j integration. Karkuvel's Week 2 responsibility ends at graph-ready data preparation, and `data/processed/graph_ready_triples.json` is the explicit hand-off point to the downstream Neo4j module owned by the appropriate team member.
 
 ---
 
@@ -88,16 +86,8 @@ Neo4j graph construction is not implemented in Karkuvel's module. The `graph_rea
 - **Graph Preparation Summary**: Generating `data/processed/graph_prep_summary.json` containing pipeline statistics.
 - **Data Contract**: Establishing the formal contract for downstream Neo4j integration ([`docs/GRAPH_DATA_CONTRACT.md`](file:///d:/ChronoGraph/docs/GRAPH_DATA_CONTRACT.md)).
 
-#### Week 3 — Karkuvel: Temporal Retrieval Preparation
-- **Retrieval-Ready Records**: Deriving source-backed `RetrievalRecord` objects from graph-ready triples, preserving all provenance and temporal metadata.
-- **Chronological Filtering**: Exact date, date-range, before, and after temporal query preparation.
-- **Retrieval Request Schema**: Lightweight `RetrievalRequest` filter schema for downstream Temporal Routing / GraphRAG engine consumption.
-- **Evidence & Citation Readiness**: Source-tagged evidence records that identify Slack messages, GitHub PRs, and Jira tickets by native ID.
-- **CLI Command**: `python main.py --prepare-retrieval` to generate `retrieval_ready_records.json`.
-- **Data Contract**: [`docs/RETRIEVAL_DATA_CONTRACT.md`](file:///d:/ChronoGraph/docs/RETRIEVAL_DATA_CONTRACT.md) documenting the Week 3 retrieval-ready schema.
-
 ### Downstream / Future Modules (Not Implemented in Current Module)
-The following functionality represents downstream or future project stages and is **NOT** included in Karkuvel's module:
+The following functionality represents downstream or future project stages and is **NOT** included in Karkuvel's Week 2 module:
 - ❌ Neo4j temporal graph construction & Cypher ingestion
 - ❌ Cypher-based retrieval queries
 - ❌ Temporal GraphRAG query execution
@@ -119,18 +109,13 @@ The following functionality represents downstream or future project stages and i
    - Robust **Heuristic Fallback Engine** (`extraction_mode = "fallback"`) ensuring zero pipeline failures even when offline or unauthenticated.
 3. **Graph Preparation & Data Integration (Week 2 — Karkuvel)**
    - **Validation**: Enforces mandatory fields, valid ISO timestamps, UUID stability, and confidence score bounds.
-   - **Normalization**: Standardizes entity names to canonical `snake_case` while retaining original display names. Normalizes relations into canonical types.
+   - **Normalization**: Standardizes entity names to canonical `snake_case` while retaining original display names. Normalizes relations into 8 canonical types.
    - **Deduplication**: Resolves duplicate triples across multiple sources and retains maximum evidence and confidence score.
-   - **Hand-off Point**: Delivers `graph_ready_triples.json` as the strict data contract for downstream Neo4j consumption.
-4. **Temporal Retrieval Preparation (Week 3 — Karkuvel)**
-   - **RetrievalRecord**: Clean, source-tagged, retrieval-ready records derived from graph-ready triples.
-   - **TemporalFilter**: Chronological filtering by date-range, before, after, or exact date.
-   - **RetrievalRequest**: Lightweight filter schema for downstream Temporal Routing engine.
-   - **Evidence Provenance**: Slack/GitHub/Jira native IDs embedded for citation-ready downstream answering.
-5. **Production-Ready Operations**
+   - **Hand-off Point**: Karkuvel's Week 2 responsibility ends at graph-ready data preparation. Delivers `graph_ready_triples.json` as the strict data contract for downstream Neo4j consumption.
+4. **Production-Ready Operations**
    - **FastAPI** application for HTTP-triggered ingestion, extraction, and triple retrieval.
    - **Apache Airflow DAG** (`chronograph_ingestion_dag.py`) for enterprise pipeline scheduling and DAG validation.
-   - **Comprehensive Test Suite**: 230+ passing pytest unit and integration tests.
+   - **Comprehensive Test Suite**: 230 passing pytest unit and integration tests.
 
 ---
 
@@ -148,11 +133,9 @@ ChronoGraph/
 │       ├── normalized_events.json  # Output of Ingestion Pipeline
 │       ├── extracted_triples.json   # Output of Extraction Pipeline
 │       ├── graph_ready_triples.json # Final Graph-Ready Data Contract (Hand-off)
-│       ├── graph_prep_summary.json  # Pipeline execution statistics
-│       └── retrieval_ready_records.json  # Week 3: Retrieval-Ready Evidence Records
+│       └── graph_prep_summary.json  # Pipeline execution statistics
 ├── docs/
-│   ├── GRAPH_DATA_CONTRACT.md    # Week 2 Neo4j integration schema specification
-│   └── RETRIEVAL_DATA_CONTRACT.md  # Week 3 retrieval-ready schema specification
+│   └── GRAPH_DATA_CONTRACT.md    # Neo4j integration schema specification
 ├── src/
 │   ├── api/
 │   │   └── app.py                # FastAPI endpoints & CORS configuration
@@ -171,18 +154,12 @@ ChronoGraph/
 │   │   ├── jira_loader.py        # Jira tickets ingestor
 │   │   ├── slack_loader.py       # Slack messages ingestor
 │   │   └── pipeline.py           # Multi-source ingestion orchestrator
-│   ├── retrieval/                # Week 3: Temporal Retrieval Preparation
-│   │   ├── __init__.py
-│   │   ├── models.py             # RetrievalRecord, RetrievalRequest, TemporalFilter
-│   │   ├── builder.py            # Builds RetrievalRecord list from graph_ready_triples
-│   │   └── filter.py             # Temporal filtering & chronological sorting logic
 │   └── schemas/
 │       └── graph.py              # Pydantic schemas (RawEvent, Triple, ExtractedGraph)
 ├── tests/
 │   ├── test_extraction.py        # Extraction & fallback unit tests
 │   ├── test_graph_prep.py        # Validation, normalization & deduplication tests
-│   ├── test_ingestion.py         # Loader & ingestion pipeline tests
-│   └── test_retrieval.py         # Week 3: Temporal retrieval preparation tests
+│   └── test_ingestion.py         # Loader & ingestion pipeline tests
 ├── .env.example                  # Template for environment configuration
 ├── main.py                       # Unified CLI entrypoint
 ├── requirements.txt              # Dependency manifests
@@ -302,12 +279,6 @@ python main.py --run-all
 
 # 5. Run Full End-to-End Pipeline (Ingest + Extract + Graph Preparation)
 python main.py --run-week2-data
-
-# 6. Run Retrieval Preparation (graph_ready_triples.json -> retrieval_ready_records.json)
-python main.py --prepare-retrieval
-
-# 7. Run Full Week 3 Pipeline (Ingest + Extract + Graph Prep + Retrieval Prep)
-python main.py --run-week3-data
 ```
 
 ### Inspection & Utility Commands
@@ -369,7 +340,7 @@ pytest
 ```
 
 Current test execution results:
-- **230+ passed** unit and integration tests across `tests/test_extraction.py`, `tests/test_graph_prep.py`, `tests/test_ingestion.py`, and `tests/test_retrieval.py`.
+- **230 passed** unit and integration tests across `tests/test_extraction.py`, `tests/test_graph_prep.py`, and `tests/test_ingestion.py`.
 
 ---
 
@@ -395,59 +366,3 @@ Current pipeline run metrics recorded in `data/processed/graph_prep_summary.json
   - `ADVOCATED_FOR`: 8
   - `ASSIGNED_TO`: 3
   - `DEPRECATED`: 3
-
----
-
-## 👥 Team Ownership & Review Structure
-
-```
-ChronoGraph (main)
-│
-├── data-ingestion/       → Karkuvel (Branch: data-ingestion)
-│   └── Data ingestion pipelines, deduplication, normalizer, and graph-ready data preparation
-│
-├── graph-extraction/     → Aathi Narayana Moorthi (Branch: graph-extraction)
-│   └── LLM graph extraction module using Groq, entity/relation extraction, and validation
-│
-├── neo4j-temporal/       → Velakurthi Saiprasanna (Branch: neo4j-temporal)
-│   └── Neo4j database integration, temporal graph modeling, timestamps, and Cypher queries
-│
-├── rag-ui/               → Vembarasan Nagarajan (Branch: rag-ui)
-│   └── Vite + React + Tailwind CSS chat interface and knowledge graph visualization UI
-│
-└── integration/          → Integration Layer (Adapter, REST API, Outputs)
-```
-
----
-
-## ⚡ Automated Mid-Review Pipeline Verification
-
-To execute and verify the complete integrated pipeline across all four member modules:
-
-```bash
-python run_midreview.py
-```
-
-*Optional — Run with live Groq LLM extraction (requires `GROQ_API_KEY` in `.env`):*
-```bash
-python run_midreview.py --live-groq
-```
-
-### What this runner verifies:
-1. **Stage 1 (`data-ingestion`)**: Executes Karkuvel's graph preparation pipeline to validate, normalize, and deduplicate 142 triples into `graph_ready_triples.json`.
-2. **Stage 2 (`graph-extraction`)**: Connects Karkuvel's `normalized_events.json` to Aathi's `process_records()` pipeline via `integration/adapter.py`. The default mid-review run uses **deterministic mock extraction** for reproducibility. Live Groq extraction is optional.
-3. **Stage 3 (`neo4j-temporal`)**: Compiles Python bytecode (`py_compile`) and verifies `create_graph.py` graph-ready loader and temporal queries. (If Neo4j credentials are unconfigured, reports clean `BLOCKED BY EXT SERVICE`).
-4. **Stage 4 (`integration-api`)**: Validates the Integration API endpoints (`GET /api/health` and `GET /api/graph`) using FastAPI test client.
-5. **Stage 5 (`rag-ui`)**: Verifies the production build (`npm run build`) and checks if the local dev server is active.
-
----
-
-## 📊 Mid-Review Status Summary
-
-| Member | Module | Tests | Build / Run | Status | Data Flow |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Karkuvel** | `data-ingestion/` | 230 Passed | Pipeline Ran Successfully | **PASS** | Ingest raw sources → Output `graph_ready_triples.json` |
-| **Aathi** | `graph-extraction/` | 28 Passed | Adapter Ran Successfully | **PASS** | `normalized_events.json` → `process_records()` → `graph_extraction_result.json` |
-| **Saiprasanna** | `neo4j-temporal/` | Syntax Compiled | Handoff & Queries Verified | **BLOCKED BY EXT SERVICE** | `graph_ready_triples.json` loader ready; live DB requires `.env` credentials |
-| **Integration** | `integration/` | Endpoints Verified | REST API Active (:8000) | **PASS** | `graph_ready_triples.json` → `GET /api/graph` |
-| **Nagaraj** | `rag-ui/` | Build Verified | Vite Dev Server (:5173) | **PASS** | UI loads real graph data via `/api/graph` with simulated chat fallback |
