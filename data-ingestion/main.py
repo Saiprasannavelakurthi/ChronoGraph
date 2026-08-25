@@ -1,24 +1,32 @@
 """
 main.py
 ───────
-ChronoGraph CLI entrypoint — Week 1 + Week 2.
+ChronoGraph CLI entrypoint — Week 1 + Week 2 + Week 3.
 
 Week 1 commands
 ───────────────
-  python main.py --ingest          Run data ingestion -> normalized_events.json
-  python main.py --extract         Run triple extraction -> extracted_triples.json
-  python main.py --run-all         Run full Week 1 pipeline (ingest + extract)
-  python main.py --export-json     Print extracted_triples.json to stdout
-  python main.py --start-api       Start the FastAPI server
-  python main.py --validate-dag    Validate the Airflow DAG (import check)
+  python main.py --ingest              Run data ingestion -> normalized_events.json
+  python main.py --extract             Run triple extraction -> extracted_triples.json
+  python main.py --run-all             Run full Week 1 pipeline (ingest + extract)
+  python main.py --export-json         Print extracted_triples.json to stdout
+  python main.py --start-api           Start the FastAPI server
+  python main.py --validate-dag        Validate the Airflow DAG (import check)
 
 Week 2 commands (Karkuvel - Data Integration & Graph-Ready Pipeline)
 ─────────────────────────────────────────────────────────────────────
-  python main.py --prepare-graph   Validate + normalize + deduplicate ->
-                                   graph_ready_triples.json
-  python main.py --graph-prep      Alias for --prepare-graph
-  python main.py --run-week2-data  Full pipeline: ingest -> extract ->
-                                   graph preparation
+  python main.py --prepare-graph       Validate + normalize + deduplicate ->
+                                       graph_ready_triples.json
+  python main.py --graph-prep          Alias for --prepare-graph
+  python main.py --run-week2-data      Full pipeline: ingest -> extract ->
+                                       graph preparation
+
+Week 3 commands (Karkuvel - Temporal Retrieval Preparation)
+────────────────────────────────────────────────────────────
+  python main.py --prepare-retrieval   Build retrieval-ready records from
+                                       graph_ready_triples.json ->
+                                       retrieval_ready_records.json
+  python main.py --run-week3-data      Full pipeline: ingest -> extract ->
+                                       graph prep -> retrieval prep
 
 Environment
 ───────────
@@ -360,13 +368,94 @@ def run_graph_prep() -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Week 3 – Retrieval Preparation (Karkuvel)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def run_retrieval_prep() -> dict:
+    """
+    Week 3 – Temporal Retrieval Preparation (Karkuvel's module).
+
+    Reads: data/processed/graph_ready_triples.json
+    Writes:
+        data/processed/retrieval_ready_records.json
+    """
+    _print_section("Week 3: Temporal Retrieval Preparation (Karkuvel)")
+
+    if not settings.graph_ready_triples_path.exists():
+        _print_error(
+            "graph_ready_triples.json not found. Run --prepare-graph or --run-week2-data first."
+        )
+        sys.exit(1)
+
+    from src.retrieval.builder import RetrievalRecordBuilder
+
+    output_path = settings.processed_data_dir / "retrieval_ready_records.json"
+
+    builder = RetrievalRecordBuilder(
+        input_path=settings.graph_ready_triples_path,
+        output_path=output_path,
+    )
+    records, report = builder.build()
+
+    # ── Print summary ────────────────────────────────────────────────────────
+    if _RICH:
+        from rich.table import Table
+        _print_section("Retrieval Preparation Summary")
+
+        t = Table(show_header=True, header_style="bold magenta", title="Build Statistics")
+        t.add_column("Metric", style="cyan", min_width=28)
+        t.add_column("Count", justify="right")
+        t.add_row("Total graph-ready triples", str(report["total_input"]))
+        t.add_row("Retrieval records built",   str(report["records_built"]))
+        t.add_row("Records skipped",           str(report["records_skipped"]))
+        console.print(t)
+
+        # Source breakdown
+        from collections import Counter
+        source_counts = Counter(r.source for r in records)
+        t_src = Table(show_header=True, header_style="bold magenta", title="Source Breakdown")
+        t_src.add_column("Source", style="cyan", min_width=12)
+        t_src.add_column("Records", justify="right")
+        t_src.add_row("Slack",  str(source_counts.get("slack", 0)))
+        t_src.add_row("GitHub", str(source_counts.get("github", 0)))
+        t_src.add_row("Jira",   str(source_counts.get("jira", 0)))
+        console.print(t_src)
+
+        if records:
+            dates = sorted(r.event_date for r in records)
+            console.print(
+                f"  [cyan]Date range:[/cyan] {dates[0]} -> {dates[-1]}"
+            )
+            console.print(
+                f"  [cyan]Records with source_url:[/cyan] "
+                f"{sum(1 for r in records if r.source_url)}"
+            )
+    else:
+        print("\nRetrieval Preparation Summary")
+        print(f"  Total graph-ready triples : {report['total_input']}")
+        print(f"  Retrieval records built   : {report['records_built']}")
+        print(f"  Records skipped           : {report['records_skipped']}")
+        if records:
+            from collections import Counter
+            sc = Counter(r.source for r in records)
+            print(f"  Slack records             : {sc.get('slack', 0)}")
+            print(f"  GitHub records            : {sc.get('github', 0)}")
+            print(f"  Jira records              : {sc.get('jira', 0)}")
+            dates = sorted(r.event_date for r in records)
+            print(f"  Date range                : {dates[0]} -> {dates[-1]}")
+
+    _print_info(f"retrieval_ready_records.json -> {output_path}")
+    return report
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="chronograph",
-        description="ChronoGraph CLI – Week 1 + Week 2 (Data Integration & Graph-Ready Pipeline)",
+        description="ChronoGraph CLI – Week 1 + Week 2 + Week 3 (Temporal Retrieval Preparation)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Week 1 examples:
@@ -381,6 +470,10 @@ Week 2 examples (Karkuvel – Graph-Ready Data Pipeline):
   python main.py --prepare-graph                Validate + normalize + deduplicate triples
   python main.py --graph-prep                   Alias for --prepare-graph
   python main.py --run-week2-data               Full pipeline: ingest -> extract -> graph prep
+
+Week 3 examples (Karkuvel – Temporal Retrieval Preparation):
+  python main.py --prepare-retrieval            Build retrieval-ready records from graph_ready_triples.json
+  python main.py --run-week3-data               Full pipeline: ingest -> extract -> graph prep -> retrieval prep
 
 LLM modes (set in .env or environment):
   LLM_PROVIDER=groq     -> Groq Cloud API (llama-3.1-8b-instant, default)
@@ -413,6 +506,17 @@ LLM modes (set in .env or environment):
         "--run-week2-data",
         action="store_true",
         help="Week 2: Full pipeline — ingest -> extract -> graph preparation",
+    )
+    # ── Week 3 commands (Karkuvel) ────────────────────────────────────────────
+    group.add_argument(
+        "--prepare-retrieval",
+        action="store_true",
+        help="Week 3: Build retrieval-ready records from graph_ready_triples.json",
+    )
+    group.add_argument(
+        "--run-week3-data",
+        action="store_true",
+        help="Week 3: Full pipeline — ingest -> extract -> graph prep -> retrieval prep",
     )
 
     args = parser.parse_args()
@@ -457,6 +561,24 @@ LLM modes (set in .env or environment):
         _print_info(f"extracted_triples.json   -> {settings.extracted_triples_path}")
         _print_info(f"graph_ready_triples.json -> {settings.graph_ready_triples_path}")
         _print_info(f"graph_prep_summary.json  -> {settings.graph_prep_summary_path}")
+
+    # ── Week 3 dispatching (Karkuvel) ────────────────────────────────────────
+    elif args.prepare_retrieval:
+        run_retrieval_prep()
+        _print_section("Week 3 Retrieval Preparation Complete")
+
+    elif args.run_week3_data:
+        events = run_ingest()
+        run_extract(events)
+        run_graph_prep()
+        run_retrieval_prep()
+        output_path = settings.processed_data_dir / "retrieval_ready_records.json"
+        _print_section("Week 3 Full Pipeline Complete")
+        _print_info(f"normalized_events.json         -> {settings.normalized_events_path}")
+        _print_info(f"extracted_triples.json         -> {settings.extracted_triples_path}")
+        _print_info(f"graph_ready_triples.json       -> {settings.graph_ready_triples_path}")
+        _print_info(f"graph_prep_summary.json        -> {settings.graph_prep_summary_path}")
+        _print_info(f"retrieval_ready_records.json   -> {output_path}")
 
 
 if __name__ == "__main__":
