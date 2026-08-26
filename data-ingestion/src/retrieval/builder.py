@@ -16,6 +16,9 @@ Design Principles
   • source_url is extracted from metadata if present; otherwise None.
   • event_date is parsed from the triple's timestamp string.
   • Malformed records are skipped with a logged warning (never crash).
+  • A PipelineExecutionMetadata summary is written to a *separate* file
+    (retrieval_prep_summary.json) after every run.  The
+    retrieval_ready_records.json contract is not altered.
 """
 
 from __future__ import annotations
@@ -26,7 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.retrieval.models import RetrievalRecord
+from src.retrieval.models import PipelineExecutionMetadata, RetrievalRecord
 
 logger = logging.getLogger(__name__)
 
@@ -56,21 +59,33 @@ class RetrievalRecordBuilder:
         # report : dict with statistics
     """
 
-    def __init__(self, input_path: Path, output_path: Path) -> None:
+    def __init__(
+        self,
+        input_path: Path,
+        output_path: Path,
+        summary_path: Optional[Path] = None,
+    ) -> None:
         self.input_path = Path(input_path)
         self.output_path = Path(output_path)
+        # Derive summary path: same dir as output, named retrieval_prep_summary.json
+        if summary_path is None:
+            self.summary_path: Path = self.output_path.parent / "retrieval_prep_summary.json"
+        else:
+            self.summary_path = Path(summary_path)
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    def build(self) -> tuple[List[RetrievalRecord], Dict[str, Any]]:
+    def build(self) -> tuple[List[RetrievalRecord], Dict[str, Any], PipelineExecutionMetadata]:
         """
         Load graph-ready triples and build retrieval-ready records.
 
         Returns
         ───────
-        (records, report)
-            records : List[RetrievalRecord] — successfully built records.
-            report  : dict — build statistics (total, success, skipped).
+        (records, report, metadata)
+            records  : List[RetrievalRecord] — successfully built records.
+            report   : dict — build statistics (total, success, skipped).
+            metadata : PipelineExecutionMetadata — execution metadata written
+                       to retrieval_prep_summary.json.
         """
         raw_triples = self._load_graph_ready_triples()
         logger.info(
@@ -109,7 +124,10 @@ class RetrievalRecordBuilder:
             len(records),
             len(skipped),
         )
-        return records, report
+
+        metadata = self._write_summary(len(raw_triples), len(records), len(skipped))
+
+        return records, report, metadata
 
     # ── Private helpers ───────────────────────────────────────────────────────
 
@@ -214,7 +232,7 @@ class RetrievalRecordBuilder:
             return date.today()
 
     def _write_output(self, records: List[RetrievalRecord]) -> None:
-        """Write retrieval_ready_records.json."""
+        """Write retrieval_ready_records.json (data contract unchanged)."""
         import json
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.output_path, "w", encoding="utf-8") as fh:
@@ -230,3 +248,27 @@ class RetrievalRecordBuilder:
             len(records),
             self.output_path,
         )
+
+    def _write_summary(
+        self,
+        total_records: int,
+        records_built: int,
+        skipped_records: int,
+    ) -> "PipelineExecutionMetadata":
+        """Build and persist PipelineExecutionMetadata to retrieval_prep_summary.json."""
+        import json
+        metadata = PipelineExecutionMetadata(
+            input_source=str(self.input_path.resolve()),
+            total_records=total_records,
+            records_built=records_built,
+            skipped_records=skipped_records,
+        )
+        self.summary_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.summary_path, "w", encoding="utf-8") as fh:
+            json.dump(metadata.to_dict(), fh, indent=2, ensure_ascii=False)
+        logger.info(
+            "Wrote pipeline execution metadata → %s (status=%s)",
+            self.summary_path,
+            metadata.status,
+        )
+        return metadata

@@ -26,7 +26,7 @@ Data Contract
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
@@ -54,6 +54,76 @@ class TemporalFilterMode(str, Enum):
     RANGE = "range"
     BEFORE = "before"
     AFTER = "after"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PipelineExecutionMetadata
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class PipelineExecutionMetadata(BaseModel):
+    """
+    Execution metadata for the Week 3 Temporal Retrieval Preparation pipeline.
+
+    Written to a *separate* summary file (`retrieval_prep_summary.json`) so
+    that the `retrieval_ready_records.json` data contract is not modified.
+
+    Fields
+    ──────
+    pipeline_name   : Human-readable name of the pipeline step.
+    input_source    : Absolute path (as string) of the input file consumed.
+    total_records   : Number of graph-ready triples read from the input.
+    records_built   : Number of RetrievalRecord objects successfully created.
+    skipped_records : Number of triples that were rejected / failed validation.
+    generated_at    : UTC ISO-8601 timestamp of when the run completed.
+    status          : "success" when skipped_records == 0, otherwise "partial".
+    """
+
+    pipeline_name: str = Field(
+        default="Week 3 — Temporal Retrieval Preparation",
+        description="Human-readable name of the pipeline.",
+    )
+    input_source: str = Field(
+        description="Absolute path to the input graph_ready_triples.json consumed by this run.",
+    )
+    total_records: int = Field(
+        ge=0,
+        description="Total number of graph-ready triples read from the input file.",
+    )
+    records_built: int = Field(
+        ge=0,
+        description="Number of RetrievalRecord objects successfully built.",
+    )
+    skipped_records: int = Field(
+        ge=0,
+        description="Number of triples skipped due to validation or build errors.",
+    )
+    generated_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
+        description="UTC ISO-8601 timestamp of when this summary was generated.",
+    )
+    status: str = Field(
+        default="success",
+        description=('"success" when no records were skipped; "partial" otherwise.'),
+    )
+
+    @model_validator(mode="after")
+    def _derive_status(self) -> "PipelineExecutionMetadata":
+        """Automatically set status based on skipped_records."""
+        self.status = "success" if self.skipped_records == 0 else "partial"
+        return self
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize to a plain JSON-compatible dict."""
+        return {
+            "pipeline_name": self.pipeline_name,
+            "input_source": self.input_source,
+            "total_records": self.total_records,
+            "records_built": self.records_built,
+            "skipped_records": self.skipped_records,
+            "generated_at": self.generated_at,
+            "status": self.status,
+        }
 
 
 # ─────────────────────────────────────────────────────────────────────────────

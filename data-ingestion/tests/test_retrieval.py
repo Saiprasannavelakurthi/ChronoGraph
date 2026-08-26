@@ -46,6 +46,7 @@ import pytest
 
 # ── Imports under test ────────────────────────────────────────────────────────
 from src.retrieval.models import (
+    PipelineExecutionMetadata,
     RetrievalRecord,
     RetrievalRequest,
     SortOrder,
@@ -742,7 +743,7 @@ class TestRetrievalRecordBuilder:
         output_file = tmp_path / "retrieval_ready_records.json"
 
         builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
-        records, report = builder.build()
+        records, report, _meta = builder.build()
 
         assert report["total_input"] == 3
         assert report["records_built"] == 3
@@ -755,7 +756,7 @@ class TestRetrievalRecordBuilder:
         output_file = tmp_path / "retrieval_ready_records.json"
 
         builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
-        records, _ = builder.build()
+        records, _, _meta = builder.build()
 
         expected_ts = {
             "11111111-0000-0000-0000-000000000001": "2023-03-15T10:30:00+00:00",
@@ -771,7 +772,7 @@ class TestRetrievalRecordBuilder:
         output_file = tmp_path / "retrieval_ready_records.json"
 
         builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
-        records, _ = builder.build()
+        records, _, _meta = builder.build()
 
         dates_by_id = {r.triple_id: r.event_date for r in records}
         assert dates_by_id["11111111-0000-0000-0000-000000000001"] == date(2023, 3, 15)
@@ -824,7 +825,7 @@ class TestBuilderSkipsMalformed:
         output_file = tmp_path / "retrieval_ready_records.json"
 
         builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
-        records, report = builder.build()
+        records, report, _meta = builder.build()
 
         # 3 good, 1 bad = 3 built, 1 skipped
         assert report["records_built"] == 3
@@ -840,7 +841,7 @@ class TestBuilderSkipsMalformed:
         output_file = tmp_path / "retrieval_ready_records.json"
 
         builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
-        records, report = builder.build()
+        records, report, _meta = builder.build()
 
         assert records == []
         assert report["records_skipped"] == 1
@@ -869,7 +870,7 @@ class TestSourceUrlExtraction:
         output_file = tmp_path / "out.json"
 
         builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
-        records, _ = builder.build()
+        records, _, _meta = builder.build()
 
         assert len(records) == 1
         assert records[0].source_url == "https://github.com/org/repo/pull/7"
@@ -882,7 +883,7 @@ class TestSourceUrlExtraction:
         output_file = tmp_path / "out.json"
 
         builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
-        records, _ = builder.build()
+        records, _, _meta = builder.build()
 
         assert len(records) == 1
         assert records[0].source_url is None
@@ -895,7 +896,7 @@ class TestSourceUrlExtraction:
         output_file = tmp_path / "out.json"
 
         builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
-        records, _ = builder.build()
+        records, _, _meta = builder.build()
 
         assert records[0].source_url == "https://slack.com/archives/C001/p1234"
 
@@ -1044,7 +1045,7 @@ class TestBuilderToFilterIntegration:
         output_file = tmp_path / "out.json"
 
         builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
-        records, _ = builder.build()
+        records, _, _meta = builder.build()
 
         req = RetrievalRequest(
             temporal_filter=TemporalFilter(start_date=date(2023, 1, 1)),
@@ -1061,10 +1062,296 @@ class TestBuilderToFilterIntegration:
         output_file = tmp_path / "out.json"
 
         builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
-        records, _ = builder.build()
+        records, _, _meta = builder.build()
 
         req = RetrievalRequest(sort_order=SortOrder.ASC, limit=100)
         result = _engine().apply(records, req)
 
         dates = [r.event_date for r in result]
         assert dates == sorted(dates)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 26. PipelineExecutionMetadata — model, serialisation, and builder integration
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestPipelineExecutionMetadata:
+    """Tests for the PipelineExecutionMetadata model and builder integration."""
+
+    # ── Model construction ───────────────────────────────────────────────────
+
+    def test_basic_construction(self):
+        """Metadata can be constructed with required fields."""
+        meta = PipelineExecutionMetadata(
+            input_source="/data/processed/graph_ready_triples.json",
+            total_records=100,
+            records_built=95,
+            skipped_records=5,
+        )
+        assert meta.total_records == 100
+        assert meta.records_built == 95
+        assert meta.skipped_records == 5
+        assert meta.input_source == "/data/processed/graph_ready_triples.json"
+
+    def test_default_pipeline_name(self):
+        """Default pipeline_name contains expected Week 3 identifier."""
+        meta = PipelineExecutionMetadata(
+            input_source="/some/path.json",
+            total_records=10,
+            records_built=10,
+            skipped_records=0,
+        )
+        assert "Week 3" in meta.pipeline_name
+        assert "Temporal Retrieval" in meta.pipeline_name
+
+    # ── Status auto-derivation ───────────────────────────────────────────────
+
+    def test_status_success_when_no_skipped(self):
+        """status == 'success' when skipped_records == 0."""
+        meta = PipelineExecutionMetadata(
+            input_source="/p.json",
+            total_records=50,
+            records_built=50,
+            skipped_records=0,
+        )
+        assert meta.status == "success"
+
+    def test_status_partial_when_skipped(self):
+        """status == 'partial' when skipped_records > 0."""
+        meta = PipelineExecutionMetadata(
+            input_source="/p.json",
+            total_records=50,
+            records_built=45,
+            skipped_records=5,
+        )
+        assert meta.status == "partial"
+
+    def test_status_partial_all_skipped(self):
+        """Even if every record is skipped, status is 'partial' (not 'failed')."""
+        meta = PipelineExecutionMetadata(
+            input_source="/p.json",
+            total_records=10,
+            records_built=0,
+            skipped_records=10,
+        )
+        assert meta.status == "partial"
+
+    # ── generated_at timestamp ───────────────────────────────────────────────
+
+    def test_generated_at_is_set_by_default(self):
+        """generated_at is auto-populated and is a non-empty string."""
+        meta = PipelineExecutionMetadata(
+            input_source="/p.json",
+            total_records=1,
+            records_built=1,
+            skipped_records=0,
+        )
+        assert isinstance(meta.generated_at, str)
+        assert len(meta.generated_at) > 0
+
+    def test_generated_at_is_iso8601(self):
+        """generated_at can be parsed as a valid ISO-8601 datetime."""
+        meta = PipelineExecutionMetadata(
+            input_source="/p.json",
+            total_records=1,
+            records_built=1,
+            skipped_records=0,
+        )
+        # Should not raise
+        parsed = datetime.fromisoformat(meta.generated_at)
+        assert parsed is not None
+
+    def test_generated_at_custom_value(self):
+        """An explicit generated_at value is preserved."""
+        ts = "2026-08-26T12:00:00+00:00"
+        meta = PipelineExecutionMetadata(
+            input_source="/p.json",
+            total_records=1,
+            records_built=1,
+            skipped_records=0,
+            generated_at=ts,
+        )
+        assert meta.generated_at == ts
+
+    # ── to_dict serialisation ────────────────────────────────────────────────
+
+    def test_to_dict_has_all_required_keys(self):
+        """to_dict() contains all six required metadata keys."""
+        meta = PipelineExecutionMetadata(
+            input_source="/p.json",
+            total_records=20,
+            records_built=18,
+            skipped_records=2,
+        )
+        d = meta.to_dict()
+        required_keys = {
+            "pipeline_name",
+            "input_source",
+            "total_records",
+            "records_built",
+            "skipped_records",
+            "generated_at",
+            "status",
+        }
+        assert required_keys.issubset(d.keys())
+
+    def test_to_dict_values_match_model(self):
+        """to_dict() values are consistent with model fields."""
+        meta = PipelineExecutionMetadata(
+            input_source="/data/graph_ready_triples.json",
+            total_records=30,
+            records_built=30,
+            skipped_records=0,
+        )
+        d = meta.to_dict()
+        assert d["total_records"] == 30
+        assert d["records_built"] == 30
+        assert d["skipped_records"] == 0
+        assert d["status"] == "success"
+        assert d["input_source"] == "/data/graph_ready_triples.json"
+
+    def test_to_dict_is_json_serialisable(self):
+        """to_dict() output can be round-tripped through json.dumps / json.loads."""
+        import json
+        meta = PipelineExecutionMetadata(
+            input_source="/p.json",
+            total_records=5,
+            records_built=4,
+            skipped_records=1,
+        )
+        serialised = json.dumps(meta.to_dict())
+        restored = json.loads(serialised)
+        assert restored["status"] == "partial"
+        assert restored["total_records"] == 5
+
+    # ── Builder writes summary file ──────────────────────────────────────────
+
+    def test_builder_writes_summary_file(self, tmp_path):
+        """builder.build() writes retrieval_prep_summary.json alongside the output."""
+        import json
+        input_file = tmp_path / "graph_ready_triples.json"
+        input_file.write_text(json.dumps(MOCK_GRAPH_READY_TRIPLES), encoding="utf-8")
+        output_file = tmp_path / "retrieval_ready_records.json"
+        summary_file = tmp_path / "retrieval_prep_summary.json"
+
+        builder = RetrievalRecordBuilder(
+            input_path=input_file,
+            output_path=output_file,
+            summary_path=summary_file,
+        )
+        records, report, metadata = builder.build()
+
+        assert summary_file.exists(), "retrieval_prep_summary.json was not written"
+
+    def test_builder_summary_json_has_required_fields(self, tmp_path):
+        """The written retrieval_prep_summary.json contains all required metadata fields."""
+        import json
+        input_file = tmp_path / "graph_ready_triples.json"
+        input_file.write_text(json.dumps(MOCK_GRAPH_READY_TRIPLES), encoding="utf-8")
+        output_file = tmp_path / "out.json"
+        summary_file = tmp_path / "summary.json"
+
+        builder = RetrievalRecordBuilder(
+            input_path=input_file,
+            output_path=output_file,
+            summary_path=summary_file,
+        )
+        records, report, metadata = builder.build()
+
+        with open(summary_file, encoding="utf-8") as fh:
+            data = json.load(fh)
+
+        for key in ("pipeline_name", "input_source", "total_records",
+                    "records_built", "skipped_records", "generated_at", "status"):
+            assert key in data, f"Missing key in summary JSON: {key!r}"
+
+    def test_builder_summary_total_records_matches_input(self, tmp_path):
+        """total_records in the summary equals the number of graph-ready triples loaded."""
+        import json
+        input_file = tmp_path / "graph_ready_triples.json"
+        input_file.write_text(json.dumps(MOCK_GRAPH_READY_TRIPLES), encoding="utf-8")
+        output_file = tmp_path / "out.json"
+
+        builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
+        records, report, metadata = builder.build()
+
+        assert metadata.total_records == len(MOCK_GRAPH_READY_TRIPLES)
+        assert metadata.records_built == len(records)
+        assert metadata.skipped_records == report["records_skipped"]
+
+    def test_builder_summary_status_success_on_clean_input(self, tmp_path):
+        """A clean input (no malformed triples) yields status='success'."""
+        import json
+        input_file = tmp_path / "graph_ready_triples.json"
+        input_file.write_text(json.dumps(MOCK_GRAPH_READY_TRIPLES), encoding="utf-8")
+        output_file = tmp_path / "out.json"
+
+        builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
+        _records, _report, metadata = builder.build()
+
+        assert metadata.status == "success"
+        assert metadata.skipped_records == 0
+
+    def test_builder_summary_status_partial_on_bad_input(self, tmp_path):
+        """Malformed triples increment skipped_records and set status='partial'."""
+        import json
+        bad_triple = {"triple_id": "", "subject": ""}  # deliberately invalid
+        triples = MOCK_GRAPH_READY_TRIPLES + [bad_triple]
+        input_file = tmp_path / "graph_ready_triples.json"
+        input_file.write_text(json.dumps(triples), encoding="utf-8")
+        output_file = tmp_path / "out.json"
+
+        builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
+        _records, _report, metadata = builder.build()
+
+        assert metadata.skipped_records >= 1
+        assert metadata.status == "partial"
+
+    def test_builder_default_summary_path_placement(self, tmp_path):
+        """When summary_path is omitted, the file lands next to the output file."""
+        import json
+        input_file = tmp_path / "graph_ready_triples.json"
+        input_file.write_text(json.dumps(MOCK_GRAPH_READY_TRIPLES), encoding="utf-8")
+        output_file = tmp_path / "retrieval_ready_records.json"
+
+        builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
+        _records, _report, _meta = builder.build()
+
+        expected_summary = tmp_path / "retrieval_prep_summary.json"
+        assert expected_summary.exists(), (
+            f"Expected summary at {expected_summary} but it was not created."
+        )
+
+    def test_builder_returns_metadata_object(self, tmp_path):
+        """builder.build() third return value is a PipelineExecutionMetadata instance."""
+        import json
+        input_file = tmp_path / "graph_ready_triples.json"
+        input_file.write_text(json.dumps(MOCK_GRAPH_READY_TRIPLES), encoding="utf-8")
+        output_file = tmp_path / "out.json"
+
+        builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
+        _records, _report, metadata = builder.build()
+
+        assert isinstance(metadata, PipelineExecutionMetadata)
+
+    def test_builder_data_contract_unchanged(self, tmp_path):
+        """retrieval_ready_records.json must NOT contain any metadata fields."""
+        import json
+        input_file = tmp_path / "graph_ready_triples.json"
+        input_file.write_text(json.dumps(MOCK_GRAPH_READY_TRIPLES), encoding="utf-8")
+        output_file = tmp_path / "out.json"
+
+        builder = RetrievalRecordBuilder(input_path=input_file, output_path=output_file)
+        builder.build()
+
+        with open(output_file, encoding="utf-8") as fh:
+            records_json = json.load(fh)
+
+        # Must be a flat JSON array of record objects
+        assert isinstance(records_json, list)
+        for rec in records_json:
+            # Metadata fields must NOT appear inside individual records
+            assert "pipeline_name" not in rec
+            assert "generated_at" not in rec
+            assert "total_records" not in rec

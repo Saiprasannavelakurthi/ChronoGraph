@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![LlamaIndex](https://img.shields.io/badge/LlamaIndex-0.10%2B-purple.svg)](https://www.llamaindex.ai/)
 [![Groq LLM](https://img.shields.io/badge/Groq-llama--3.1--8b--instant-orange.svg)](https://groq.com/)
-[![Tests](https://img.shields.io/badge/tests-327%20passed-brightgreen.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/tests-346%20passed-brightgreen.svg)](https://docs.pytest.org/)
 
 **ChronoGraph** is a Temporal GraphRAG pipeline engineered for enterprise forensics, knowledge graph extraction, and cross-platform communication analytics. It ingests unstructured developer communications (Slack messages, GitHub PRs/issues, Jira tickets), extracts temporal entity-relationship triples using LlamaIndex & Groq LLMs (with robust heuristic fallbacks), validates and normalizes entities/relations, deduplicates records, and prepares citation-ready chronological retrieval evidence records for downstream Temporal Routing and GraphRAG answer generation.
 
@@ -93,8 +93,9 @@ data-ingestion/
 │       ├── normalized_events.json    # Output of Ingestion Pipeline
 │       ├── extracted_triples.json    # Output of Extraction Pipeline
 │       ├── graph_ready_triples.json  # Output of Graph Preparation Pipeline
-│       ├── graph_prep_summary.json   # Pipeline execution summary
-│       └── retrieval_ready_records.json # Output of Retrieval Preparation Pipeline
+│       ├── graph_prep_summary.json   # Week 2 pipeline execution summary
+│       ├── retrieval_ready_records.json # Output of Retrieval Preparation Pipeline
+│       └── retrieval_prep_summary.json  # Week 3 pipeline execution metadata (NEW)
 ├── docs/
 │   ├── GRAPH_DATA_CONTRACT.md        # Graph-ready data schema specification
 │   └── RETRIEVAL_DATA_CONTRACT.md    # Retrieval-ready data schema specification
@@ -122,9 +123,9 @@ data-ingestion/
 │   │   └── pipeline.py               # Multi-source ingestion orchestrator
 │   ├── retrieval/
 │   │   ├── __init__.py               # Public exports (models, builder, filter engine)
-│   │   ├── builder.py                # Builds RetrievalRecord list from graph-ready triples
+│   │   ├── builder.py                # Builds RetrievalRecord list + writes execution metadata
 │   │   ├── filter.py                 # In-memory chronological & entity filter engine
-│   │   └── models.py                 # RetrievalRecord, TemporalFilter, RetrievalRequest
+│   │   └── models.py                 # RetrievalRecord, TemporalFilter, RetrievalRequest, PipelineExecutionMetadata
 │   └── schemas/
 │       ├── __init__.py
 │       └── graph.py                  # Pydantic schemas (RawEvent, Triple, ExtractedGraph)
@@ -166,8 +167,9 @@ data-ingestion/
 - **TemporalFilter Model**: Chronological filter specification supporting `exact`, `range`, `before`, and `after` modes with automatic mode detection.
 - **RetrievalRequest Schema**: Lightweight filter schema packaging natural-language queries, entity hints, relation hints, temporal bounds, source filters, limit, and sort direction.
 - **RetrievalRecordBuilder**: Transforms `graph_ready_triples.json` into `retrieval_ready_records.json`, parsing calendar dates and extracting source URLs from metadata without data fabrication.
+- **PipelineExecutionMetadata**: After each run, writes `retrieval_prep_summary.json` capturing `pipeline_name`, `input_source`, `total_records`, `records_built`, `skipped_records`, `generated_at` (UTC), and `status`. The main records contract is never modified.
 - **TemporalFilterEngine**: In-memory Python engine applying chronological sorting (ASC/DESC), date range filtering, before/after filtering, exact date filtering, entity matching, and relation filtering.
-- **Data Contract**: Formal specification for temporal retrieval records ([`docs/RETRIEVAL_DATA_CONTRACT.md`](docs/RETRIEVAL_DATA_CONTRACT.md)).
+- **Data Contract**: Formal specification for temporal retrieval records and execution metadata ([`docs/RETRIEVAL_DATA_CONTRACT.md`](docs/RETRIEVAL_DATA_CONTRACT.md)).
 
 ---
 
@@ -189,6 +191,7 @@ data-ingestion/
    - **Chronological Indexing**: Extracts UTC calendar `event_date` for high-performance temporal filtering.
    - **Flexible In-Memory Filtering**: Supports exact date, inclusive range, exclusive before/after, entity matching, relation filtering, and ASC/DESC chronological sorting.
    - **Retrieval-Ready Output**: Produces `data/processed/retrieval_ready_records.json`.
+   - **Pipeline Execution Metadata**: Emits `data/processed/retrieval_prep_summary.json` after every run containing `total_records`, `skipped_records`, `input_source`, `pipeline_name`, `generated_at` (UTC ISO-8601), and `status` (`success` / `partial`). Backward-compatible — metadata lives in a separate file and never modifies the records contract.
 5. **Production-Ready Operations**
    - **FastAPI** application for HTTP-triggered ingestion, extraction, and triple retrieval.
    - **Apache Airflow DAG** (`chronograph_ingestion_dag.py`) for enterprise pipeline scheduling and DAG validation.
@@ -230,8 +233,13 @@ python main.py --prepare-graph
 graph_ready_triples.json
         ↓
 RetrievalRecordBuilder (src/retrieval/builder.py)
-        ↓
-retrieval_ready_records.json
+        ├──→ retrieval_ready_records.json   (data contract, unchanged)
+        └──→ retrieval_prep_summary.json    (execution metadata, NEW)
+              {
+                pipeline_name, input_source,
+                total_records, records_built,
+                skipped_records, generated_at, status
+              }
         ↓
 TemporalFilterEngine (src/retrieval/filter.py)
 ```
@@ -244,13 +252,14 @@ python main.py --prepare-retrieval
 **Verified Output**:
 - `142` retrieval-ready records
 - `0` skipped records
+- `status: success`
 
 ---
 
 ## 📑 Data Contracts
 
 - **Graph Data Contract**: [`docs/GRAPH_DATA_CONTRACT.md`](docs/GRAPH_DATA_CONTRACT.md) defines the schema for `graph_ready_triples.json`.
-- **Retrieval Data Contract**: [`docs/RETRIEVAL_DATA_CONTRACT.md`](docs/RETRIEVAL_DATA_CONTRACT.md) defines the schema for `retrieval_ready_records.json` and `RetrievalRequest`.
+- **Retrieval Data Contract**: [`docs/RETRIEVAL_DATA_CONTRACT.md`](docs/RETRIEVAL_DATA_CONTRACT.md) defines the schema for `retrieval_ready_records.json`, `RetrievalRequest`, and the new `retrieval_prep_summary.json` execution metadata.
 
 ---
 

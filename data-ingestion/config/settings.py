@@ -132,6 +132,16 @@ class Settings(BaseSettings):
         """Week 2 graph preparation summary report."""
         return self.processed_data_dir / "graph_prep_summary.json"
 
+    @property
+    def retrieval_ready_records_path(self) -> Path:
+        """Week 3 retrieval-ready records output (data contract file)."""
+        return self.processed_data_dir / "retrieval_ready_records.json"
+
+    @property
+    def retrieval_prep_summary_path(self) -> Path:
+        """Week 3 pipeline execution metadata summary."""
+        return self.processed_data_dir / "retrieval_prep_summary.json"
+
     @model_validator(mode="after")
     def apply_llm_model_override(self) -> Settings:
         if self.llm_model:

@@ -1,9 +1,11 @@
 # Week 3 — Retrieval-Ready Data Contract
 
 **Module Owner**: Karkuvel (data-ingestion branch)  
-**Contract Version**: Week 3  
+**Contract Version**: Week 3.1 (adds execution metadata)  
 **Produced By**: `src/retrieval/builder.py` → `RetrievalRecordBuilder`  
-**Output File**: `data/processed/retrieval_ready_records.json`  
+**Output Files**:
+- `data/processed/retrieval_ready_records.json` — evidence records (unchanged contract)
+- `data/processed/retrieval_prep_summary.json` — pipeline execution metadata (new in Week 3.1)  
 **CLI Command**: `python main.py --prepare-retrieval`
 
 ---
@@ -194,7 +196,67 @@ graph-ready data contract (`docs/GRAPH_DATA_CONTRACT.md`).
 | `extracted_triples.json` | Week 1 | Unchanged |
 | `graph_ready_triples.json` | Week 2 | Unchanged — the Week 3 builder reads this file |
 | `graph_prep_summary.json` | Week 2 | Unchanged |
-| `retrieval_ready_records.json` | **Week 3** | New output |
+| `retrieval_ready_records.json` | **Week 3** | New output — evidence record array (contract unchanged in 3.1) |
+| `retrieval_prep_summary.json` | **Week 3.1** | New — pipeline execution metadata (separate file, does not touch records) |
+
+---
+
+## Pipeline Execution Metadata
+
+After every run of `--prepare-retrieval`, the builder writes a separate
+`retrieval_prep_summary.json` that captures execution context for auditing
+and monitoring. This file **never modifies** `retrieval_ready_records.json`.
+
+### Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `pipeline_name` | `string` | Human-readable pipeline step name (e.g. `"Week 3 — Temporal Retrieval Preparation"`). |
+| `input_source` | `string` | Absolute path to the `graph_ready_triples.json` file consumed by this run. |
+| `total_records` | `integer` | Number of graph-ready triples loaded from the input file. |
+| `records_built` | `integer` | Number of `RetrievalRecord` objects successfully built. |
+| `skipped_records` | `integer` | Number of triples skipped due to validation or build errors. |
+| `generated_at` | `string (ISO-8601)` | UTC timestamp of when this summary was written (e.g. `"2026-08-26T11:58:12.503901+00:00"`). |
+| `status` | `string` | `"success"` when `skipped_records == 0`; `"partial"` when any records were skipped. |
+
+### Example `retrieval_prep_summary.json`
+
+```json
+{
+  "pipeline_name": "Week 3 — Temporal Retrieval Preparation",
+  "input_source": "/data/processed/graph_ready_triples.json",
+  "total_records": 142,
+  "records_built": 142,
+  "skipped_records": 0,
+  "generated_at": "2026-08-26T11:58:12.503901+00:00",
+  "status": "success"
+}
+```
+
+### Status Values
+
+| Status | Condition |
+|---|---|
+| `"success"` | `skipped_records == 0` — all input triples built successfully. |
+| `"partial"` | `skipped_records > 0` — some triples were malformed or failed validation. |
+
+### Python Model: `PipelineExecutionMetadata`
+
+The summary is generated from `src/retrieval/models.PipelineExecutionMetadata`:
+
+```python
+from src.retrieval.models import PipelineExecutionMetadata
+
+meta = PipelineExecutionMetadata(
+    input_source="/data/processed/graph_ready_triples.json",
+    total_records=142,
+    records_built=142,
+    skipped_records=0,
+)
+print(meta.status)        # "success"
+print(meta.generated_at)  # "2026-08-26T11:58:12.503901+00:00"
+print(meta.to_dict())     # dict with all 7 fields
+```
 
 ---
 

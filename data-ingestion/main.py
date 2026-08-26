@@ -378,6 +378,7 @@ def run_retrieval_prep() -> dict:
     Reads: data/processed/graph_ready_triples.json
     Writes:
         data/processed/retrieval_ready_records.json
+        data/processed/retrieval_prep_summary.json
     """
     _print_section("Week 3: Temporal Retrieval Preparation (Karkuvel)")
 
@@ -389,13 +390,12 @@ def run_retrieval_prep() -> dict:
 
     from src.retrieval.builder import RetrievalRecordBuilder
 
-    output_path = settings.processed_data_dir / "retrieval_ready_records.json"
-
     builder = RetrievalRecordBuilder(
         input_path=settings.graph_ready_triples_path,
-        output_path=output_path,
+        output_path=settings.retrieval_ready_records_path,
+        summary_path=settings.retrieval_prep_summary_path,
     )
-    records, report = builder.build()
+    records, report, metadata = builder.build()
 
     # ── Print summary ────────────────────────────────────────────────────────
     if _RICH:
@@ -430,6 +430,19 @@ def run_retrieval_prep() -> dict:
                 f"  [cyan]Records with source_url:[/cyan] "
                 f"{sum(1 for r in records if r.source_url)}"
             )
+
+        # Execution metadata block
+        t_meta = Table(show_header=True, header_style="bold magenta", title="Pipeline Execution Metadata")
+        t_meta.add_column("Field", style="cyan", min_width=20)
+        t_meta.add_column("Value")
+        t_meta.add_row("pipeline_name",   metadata.pipeline_name)
+        t_meta.add_row("input_source",    metadata.input_source)
+        t_meta.add_row("total_records",   str(metadata.total_records))
+        t_meta.add_row("records_built",   str(metadata.records_built))
+        t_meta.add_row("skipped_records", str(metadata.skipped_records))
+        t_meta.add_row("generated_at",    metadata.generated_at)
+        t_meta.add_row("status",          metadata.status)
+        console.print(t_meta)
     else:
         print("\nRetrieval Preparation Summary")
         print(f"  Total graph-ready triples : {report['total_input']}")
@@ -443,8 +456,17 @@ def run_retrieval_prep() -> dict:
             print(f"  Jira records              : {sc.get('jira', 0)}")
             dates = sorted(r.event_date for r in records)
             print(f"  Date range                : {dates[0]} -> {dates[-1]}")
+        print("\nPipeline Execution Metadata")
+        print(f"  pipeline_name   : {metadata.pipeline_name}")
+        print(f"  input_source    : {metadata.input_source}")
+        print(f"  total_records   : {metadata.total_records}")
+        print(f"  records_built   : {metadata.records_built}")
+        print(f"  skipped_records : {metadata.skipped_records}")
+        print(f"  generated_at    : {metadata.generated_at}")
+        print(f"  status          : {metadata.status}")
 
-    _print_info(f"retrieval_ready_records.json -> {output_path}")
+    _print_info(f"retrieval_ready_records.json -> {settings.retrieval_ready_records_path}")
+    _print_info(f"retrieval_prep_summary.json  -> {settings.retrieval_prep_summary_path}")
     return report
 
 
@@ -572,13 +594,13 @@ LLM modes (set in .env or environment):
         run_extract(events)
         run_graph_prep()
         run_retrieval_prep()
-        output_path = settings.processed_data_dir / "retrieval_ready_records.json"
         _print_section("Week 3 Full Pipeline Complete")
         _print_info(f"normalized_events.json         -> {settings.normalized_events_path}")
         _print_info(f"extracted_triples.json         -> {settings.extracted_triples_path}")
         _print_info(f"graph_ready_triples.json       -> {settings.graph_ready_triples_path}")
         _print_info(f"graph_prep_summary.json        -> {settings.graph_prep_summary_path}")
-        _print_info(f"retrieval_ready_records.json   -> {output_path}")
+        _print_info(f"retrieval_ready_records.json   -> {settings.retrieval_ready_records_path}")
+        _print_info(f"retrieval_prep_summary.json    -> {settings.retrieval_prep_summary_path}")
 
 
 if __name__ == "__main__":
