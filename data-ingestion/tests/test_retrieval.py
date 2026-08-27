@@ -1355,3 +1355,606 @@ class TestPipelineExecutionMetadata:
             assert "pipeline_name" not in rec
             assert "generated_at" not in rec
             assert "total_records" not in rec
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 27. RetrievalOutputValidator — Week 3 final validation layer
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+from src.retrieval.validator import RetrievalOutputValidator, ValidationResult
+
+
+def _write_records(path, records_data):
+    """Helper: write a records list to a JSON file."""
+    path.write_text(json.dumps(records_data), encoding="utf-8")
+
+
+def _write_summary(path, summary_data):
+    """Helper: write a summary dict to a JSON file."""
+    path.write_text(json.dumps(summary_data), encoding="utf-8")
+
+
+def _valid_summary(
+    total: int = 3,
+    built: int = 3,
+    skipped: int = 0,
+    status: str = "success",
+) -> dict:
+    """Return a valid retrieval_prep_summary.json payload."""
+    return {
+        "pipeline_name": "Week 3 \u2014 Temporal Retrieval Preparation",
+        "input_source": "/data/processed/graph_ready_triples.json",
+        "total_records": total,
+        "records_built": built,
+        "skipped_records": skipped,
+        "generated_at": "2026-08-26T12:00:00+00:00",
+        "status": status,
+    }
+
+
+def _valid_record(
+    record_id: str = "aaaaaaaa-0000-0000-0000-000000000001",
+    triple_id: str = "aaaaaaaa-0000-0000-0000-000000000001",
+    source: str = "slack",
+    source_id: str = "slack_001",
+    evidence: str = "Arun advocated for GCP migration.",
+    timestamp: str = "2023-03-15T10:30:00+00:00",
+    event_date: str = "2023-03-15",
+) -> dict:
+    """Return a valid retrieval record dict."""
+    return {
+        "record_id": record_id,
+        "triple_id": triple_id,
+        "subject": "arun_sharma",
+        "subject_display": "Arun Sharma",
+        "subject_type": "Person",
+        "relation": "ADVOCATED_FOR",
+        "object": "gcp",
+        "object_display": "GCP",
+        "object_type": "Technology",
+        "timestamp": timestamp,
+        "event_date": event_date,
+        "source": source,
+        "source_id": source_id,
+        "source_url": None,
+        "evidence": evidence,
+        "confidence": 0.9,
+        "extraction_mode": "fallback",
+        "metadata": {},
+    }
+
+
+VALID_RECORDS_3 = [
+    _valid_record("r1", "r1"),
+    _valid_record("r2", "r2", source="github", source_id="github_pr_007"),
+    _valid_record("r3", "r3", source="jira", source_id="jira_001"),
+]
+
+
+class TestValidationResult:
+    """Unit tests for the ValidationResult dataclass."""
+
+    def test_default_is_valid(self):
+        """Fresh ValidationResult starts valid with empty error/warning lists."""
+        vr = ValidationResult()
+        assert vr.is_valid is True
+        assert vr.errors == []
+        assert vr.warnings == []
+        assert vr.stats == {}
+
+    def test_add_error_sets_invalid(self):
+        """add_error() marks result invalid and appends to errors."""
+        vr = ValidationResult()
+        vr.add_error("something broke")
+        assert vr.is_valid is False
+        assert len(vr.errors) == 1
+        assert "something broke" in vr.errors[0]
+
+    def test_add_warning_does_not_invalidate(self):
+        """add_warning() does not change is_valid."""
+        vr = ValidationResult()
+        vr.add_warning("minor issue")
+        assert vr.is_valid is True
+        assert len(vr.warnings) == 1
+
+    def test_multiple_errors_accumulated(self):
+        """Multiple add_error() calls accumulate all messages."""
+        vr = ValidationResult()
+        vr.add_error("error A")
+        vr.add_error("error B")
+        assert len(vr.errors) == 2
+        assert vr.is_valid is False
+
+
+class TestRetrievalOutputValidator:
+    """Comprehensive tests for all RetrievalOutputValidator checks."""
+
+    # ── Happy path ────────────────────────────────────────────────────────────
+
+    def test_valid_output_passes_all_checks(self, tmp_path):
+        """Clean records + matching summary -> validation PASSED with no errors."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        _write_summary(sum_path, _valid_summary(total=3, built=3, skipped=0))
+
+        v = RetrievalOutputValidator(rec_path, sum_path)
+        result = v.validate()
+
+        assert result.is_valid is True
+        assert result.errors == []
+
+    def test_valid_stats_populated(self, tmp_path):
+        """Stats dict is populated with correct counts on a clean run."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        _write_summary(sum_path, _valid_summary(total=3, built=3, skipped=0))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+
+        assert result.stats["records_file_count"] == 3
+        assert result.stats["unique_record_ids"] == 3
+        assert result.stats["unique_triple_ids"] == 3
+        assert result.stats["duplicate_record_ids"] == 0
+        assert result.stats["provenance_violations"] == 0
+        assert result.stats["invalid_timestamps"] == 0
+        assert result.stats["inconsistent_dates"] == 0
+
+    def test_empty_records_list_with_matching_summary(self, tmp_path):
+        """Zero records with built=0, total=0 should pass validation."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_records(rec_path, [])
+        _write_summary(sum_path, _valid_summary(total=0, built=0, skipped=0))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is True
+
+    def test_partial_status_with_skipped_passes(self, tmp_path):
+        """status='partial' with skipped_records > 0 should pass Check 6."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        _write_summary(
+            sum_path,
+            _valid_summary(total=4, built=3, skipped=1, status="partial"),
+        )
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is True
+
+    # ── File not found ────────────────────────────────────────────────────────
+
+    def test_missing_records_file_fails(self, tmp_path):
+        """Missing retrieval_ready_records.json produces an error."""
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary())
+
+        result = RetrievalOutputValidator(
+            tmp_path / "nonexistent.json", sum_path
+        ).validate()
+
+        assert result.is_valid is False
+        assert any("not found" in e.lower() for e in result.errors)
+
+    def test_missing_summary_file_fails(self, tmp_path):
+        """Missing retrieval_prep_summary.json produces an error."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+
+        result = RetrievalOutputValidator(
+            rec_path, tmp_path / "nonexistent.json"
+        ).validate()
+
+        assert result.is_valid is False
+        assert any("not found" in e.lower() for e in result.errors)
+
+    def test_both_files_missing_produces_two_errors(self, tmp_path):
+        """Both files missing -> at least one error per missing file."""
+        result = RetrievalOutputValidator(
+            tmp_path / "a.json", tmp_path / "b.json"
+        ).validate()
+
+        assert result.is_valid is False
+        assert len(result.errors) >= 1
+
+    # ── Invalid JSON ──────────────────────────────────────────────────────────
+
+    def test_invalid_json_in_records_file_fails(self, tmp_path):
+        """Non-JSON content in records file produces a clear error."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        rec_path.write_text("not-valid-json{{{{", encoding="utf-8")
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary())
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is False
+        assert any("invalid json" in e.lower() or "json" in e.lower() for e in result.errors)
+
+    def test_records_file_is_object_not_array_fails(self, tmp_path):
+        """A JSON object instead of array in records file fails."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        rec_path.write_text('{"key": "value"}', encoding="utf-8")
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary())
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is False
+
+    def test_summary_missing_required_keys_fails(self, tmp_path):
+        """Summary without required keys produces an error."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        # Only partial keys
+        _write_summary(sum_path, {"pipeline_name": "something"})
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is False
+        assert any("missing" in e.lower() for e in result.errors)
+
+    # ── Check 1: Unique identifiers ───────────────────────────────────────────
+
+    def test_duplicate_record_ids_fail(self, tmp_path):
+        """Duplicate record_id values trigger Check 1 error."""
+        records = [
+            _valid_record("dup-id", "dup-id"),
+            _valid_record("dup-id", "different-tid"),  # duplicate record_id
+        ]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, records)
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=2, built=2))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+
+        assert result.is_valid is False
+        assert any("Check 1" in e and "record_id" in e for e in result.errors)
+
+    def test_duplicate_triple_ids_fail(self, tmp_path):
+        """Duplicate triple_id values trigger Check 1 error."""
+        records = [
+            _valid_record("uid1", "dup-tid"),
+            _valid_record("uid2", "dup-tid"),  # duplicate triple_id
+        ]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, records)
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=2, built=2))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+
+        assert result.is_valid is False
+        assert any("Check 1" in e and "triple_id" in e for e in result.errors)
+
+    def test_all_unique_ids_pass_check1(self, tmp_path):
+        """Distinct record_id and triple_id on every record -> no Check 1 error."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        _write_summary(sum_path, _valid_summary())
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert not any("Check 1" in e for e in result.errors)
+
+    def test_check1_error_mentions_duplicate_value(self, tmp_path):
+        """Check 1 error message must include the offending duplicate ID value."""
+        records = [_valid_record("dup-abc", "dup-abc"), _valid_record("dup-abc", "other")]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, records)
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=2, built=2))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert any("dup-abc" in e for e in result.errors)
+
+    # ── Check 2: Required provenance fields ───────────────────────────────────
+
+    def test_empty_source_field_fails_check2(self, tmp_path):
+        """An empty 'source' field triggers a Check 2 provenance error."""
+        bad = _valid_record("id1", "id1")
+        bad["source"] = ""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, [bad])
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=1, built=1))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is False
+        assert any("Check 2" in e for e in result.errors)
+
+    def test_empty_evidence_fails_check2(self, tmp_path):
+        """A blank 'evidence' field triggers a Check 2 provenance error."""
+        bad = _valid_record("id1", "id1")
+        bad["evidence"] = "   "  # whitespace-only
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, [bad])
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=1, built=1))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is False
+        assert any("evidence" in e for e in result.errors)
+
+    def test_missing_source_id_fails_check2(self, tmp_path):
+        """A None 'source_id' field triggers a Check 2 provenance error."""
+        bad = _valid_record("id1", "id1")
+        bad["source_id"] = None
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, [bad])
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=1, built=1))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is False
+        assert any("source_id" in e for e in result.errors)
+
+    def test_check2_error_message_names_record_id(self, tmp_path):
+        """Check 2 error message must reference the offending record's ID."""
+        bad = _valid_record("problematic-record-id", "problematic-record-id")
+        bad["evidence"] = ""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, [bad])
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=1, built=1))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        # The record ID should appear in the error message
+        assert any("problematic-record-id" in e for e in result.errors)
+
+    # ── Check 3: Temporal metadata ────────────────────────────────────────────
+
+    def test_invalid_timestamp_fails_check3a(self, tmp_path):
+        """A non-ISO-8601 timestamp triggers Check 3a error."""
+        bad = _valid_record("id1", "id1", timestamp="not-a-date")
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, [bad])
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=1, built=1))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is False
+        assert any("3a" in e or "Timestamp" in e or "timestamp" in e for e in result.errors)
+
+    def test_invalid_event_date_fails_check3b(self, tmp_path):
+        """A malformed event_date string triggers Check 3b error."""
+        bad = _valid_record("id1", "id1", event_date="2023/03/15")  # wrong sep
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, [bad])
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=1, built=1))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is False
+        assert any("3b" in e or "event_date" in e for e in result.errors)
+
+    def test_inconsistent_event_date_fails_check3c(self, tmp_path):
+        """event_date not matching the UTC date of timestamp triggers Check 3c."""
+        bad = _valid_record(
+            "id1", "id1",
+            timestamp="2023-03-15T10:30:00+00:00",
+            event_date="2023-01-01",  # wrong date
+        )
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, [bad])
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=1, built=1))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is False
+        assert any("3c" in e or "Consistency" in e or "event_date" in e for e in result.errors)
+
+    def test_consistent_timestamp_and_event_date_passes_check3(self, tmp_path):
+        """Matching timestamp and event_date produces no Check 3 errors."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        _write_summary(sum_path, _valid_summary())
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert not any("Check 3" in e for e in result.errors)
+
+    def test_check3_error_includes_record_id(self, tmp_path):
+        """Check 3 error message must include the offending record ID."""
+        bad = _valid_record("ts-bad-record", "ts-bad-record", timestamp="bad")
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, [bad])
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=1, built=1))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert any("ts-bad-record" in e for e in result.errors)
+
+    # ── Check 4: Record count parity ──────────────────────────────────────────
+
+    def test_count_mismatch_fails_check4(self, tmp_path):
+        """File has 3 records but summary says records_built=5 -> Check 4 error."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=5, built=5, skipped=0))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is False
+        assert any("Check 4" in e or "count" in e.lower() for e in result.errors)
+
+    def test_count_match_passes_check4(self, tmp_path):
+        """File has 3 records and summary reports records_built=3 -> no Check 4 error."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        _write_summary(sum_path, _valid_summary(total=3, built=3))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert not any("Check 4" in e for e in result.errors)
+
+    def test_check4_error_shows_actual_and_expected_counts(self, tmp_path):
+        """Check 4 error must state both actual file count and reported built count."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, VALID_RECORDS_3)  # 3 records
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=10, built=10))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert any("3" in e and "10" in e for e in result.errors)
+
+    # ── Check 5: Accounting identity ──────────────────────────────────────────
+
+    def test_accounting_identity_mismatch_fails_check5(self, tmp_path):
+        """built + skipped != total triggers Check 5 error."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        # built=3, skipped=1, total=10 — 3+1 != 10
+        _write_summary(sum_path, _valid_summary(total=10, built=3, skipped=1, status="partial"))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is False
+        assert any("Check 5" in e or "Accounting" in e for e in result.errors)
+
+    def test_accounting_identity_holds_passes_check5(self, tmp_path):
+        """built + skipped == total -> no Check 5 error."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        _write_summary(sum_path, _valid_summary(total=3, built=3, skipped=0))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert not any("Check 5" in e for e in result.errors)
+
+    def test_check5_error_includes_arithmetic_values(self, tmp_path):
+        """Check 5 error message must state built, skipped, and total values."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=20, built=3, skipped=0))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert any("20" in e for e in result.errors)
+
+    # ── Check 6: Pipeline status ──────────────────────────────────────────────
+
+    def test_success_status_with_skipped_zero_passes_check6(self, tmp_path):
+        """status='success' with skipped=0 -> no Check 6 error."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        _write_summary(sum_path, _valid_summary(total=3, built=3, skipped=0, status="success"))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert not any("Check 6" in e for e in result.errors)
+
+    def test_partial_status_with_skipped_nonzero_passes_check6(self, tmp_path):
+        """status='partial' with skipped > 0 -> no Check 6 error."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_summary(sum_path, _valid_summary(total=4, built=3, skipped=1, status="partial"))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert not any("Check 6" in e for e in result.errors)
+
+    def test_wrong_status_success_when_skipped_nonzero_fails_check6(self, tmp_path):
+        """status='success' with skipped > 0 -> Check 6 error."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        # skipped=1 but status='success' — contradicts the rule
+        _write_summary(sum_path, _valid_summary(total=4, built=3, skipped=1, status="success"))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is False
+        assert any("Check 6" in e for e in result.errors)
+
+    def test_wrong_status_partial_when_skipped_zero_fails_check6(self, tmp_path):
+        """status='partial' with skipped=0 -> Check 6 error."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        _write_summary(sum_path, _valid_summary(total=3, built=3, skipped=0, status="partial"))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is False
+        assert any("Check 6" in e for e in result.errors)
+
+    def test_unknown_status_value_fails_check6(self, tmp_path):
+        """An unrecognised status string triggers Check 6 error."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        _write_summary(sum_path, _valid_summary(total=3, built=3, skipped=0, status="error"))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert result.is_valid is False
+        assert any("Check 6" in e for e in result.errors)
+
+    def test_check6_error_message_mentions_expected_and_actual_status(self, tmp_path):
+        """Check 6 error message must reference both the actual and expected status."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        sum_path = tmp_path / "retrieval_prep_summary.json"
+        _write_records(rec_path, VALID_RECORDS_3)
+        _write_summary(sum_path, _valid_summary(total=3, built=3, skipped=0, status="partial"))
+
+        result = RetrievalOutputValidator(rec_path, sum_path).validate()
+        assert any("partial" in e and "success" in e for e in result.errors)
+
+    # ── Integration: builder output feeds validator ───────────────────────────
+
+    def test_builder_then_validator_passes_on_clean_input(self, tmp_path):
+        """Full pipeline: builder writes files, then validator confirms consistency."""
+        from src.retrieval.builder import RetrievalRecordBuilder
+
+        input_file = tmp_path / "graph_ready_triples.json"
+        input_file.write_text(json.dumps(MOCK_GRAPH_READY_TRIPLES), encoding="utf-8")
+        output_file = tmp_path / "retrieval_ready_records.json"
+        summary_file = tmp_path / "retrieval_prep_summary.json"
+
+        builder = RetrievalRecordBuilder(
+            input_path=input_file,
+            output_path=output_file,
+            summary_path=summary_file,
+        )
+        builder.build()
+
+        validator = RetrievalOutputValidator(
+            records_path=output_file,
+            summary_path=summary_file,
+        )
+        result = validator.validate()
+
+        assert result.is_valid is True, (
+            f"Validation failed after builder run. Errors: {result.errors}"
+        )
+
+    def test_validator_detects_injected_duplicate_after_build(self, tmp_path):
+        """If a record is manually duplicated in the records file, validator catches it."""
+        from src.retrieval.builder import RetrievalRecordBuilder
+
+        input_file = tmp_path / "graph_ready_triples.json"
+        input_file.write_text(json.dumps(MOCK_GRAPH_READY_TRIPLES), encoding="utf-8")
+        output_file = tmp_path / "retrieval_ready_records.json"
+        summary_file = tmp_path / "retrieval_prep_summary.json"
+
+        builder = RetrievalRecordBuilder(
+            input_path=input_file,
+            output_path=output_file,
+            summary_path=summary_file,
+        )
+        builder.build()
+
+        # Corrupt: append a duplicate of the first record
+        existing = json.loads(output_file.read_text(encoding="utf-8"))
+        corrupted = existing + [existing[0]]  # add duplicate
+        output_file.write_text(json.dumps(corrupted), encoding="utf-8")
+
+        validator = RetrievalOutputValidator(
+            records_path=output_file,
+            summary_path=summary_file,
+        )
+        result = validator.validate()
+
+        # Must catch the duplicate record_id
+        assert result.is_valid is False
+        assert any("Check 1" in e for e in result.errors)

@@ -1,11 +1,12 @@
 # Week 3 — Retrieval-Ready Data Contract
 
 **Module Owner**: Karkuvel (data-ingestion branch)  
-**Contract Version**: Week 3.1 (adds execution metadata)  
+**Contract Version**: Week 3.2 (adds output validation layer)  
 **Produced By**: `src/retrieval/builder.py` → `RetrievalRecordBuilder`  
+**Validated By**: `src/retrieval/validator.py` → `RetrievalOutputValidator`  
 **Output Files**:
 - `data/processed/retrieval_ready_records.json` — evidence records (unchanged contract)
-- `data/processed/retrieval_prep_summary.json` — pipeline execution metadata (new in Week 3.1)  
+- `data/processed/retrieval_prep_summary.json` — pipeline execution metadata (added in Week 3.1)  
 **CLI Command**: `python main.py --prepare-retrieval`
 
 ---
@@ -326,3 +327,68 @@ python main.py --run-week3-data
 - `event_date`: `"2023-03-15"` — extracted from `timestamp`, used for chronological indexing
 - `record_id`: set equal to `triple_id` for stable identification
 - `source_url`: `null` when not available in metadata (never fabricated)
+
+---
+
+## Output Validation
+
+After every `--prepare-retrieval` run the `RetrievalOutputValidator` automatically
+verifies the two generated artefacts for internal consistency.
+
+### Validation Checks
+
+| # | Check | Description |
+|---|---|---|
+| 1 | **Unique Identifiers** | Every `record_id` and `triple_id` must be globally unique across all records. Duplicates indicate a builder bug that would cause downstream retrieval collisions. |
+| 2 | **Required Provenance** | `record_id`, `triple_id`, `source`, `source_id`, and `evidence` must all be present and non-empty in every record. Missing or blank values indicate data quality issues. |
+| 3a | **Temporal — Timestamp** | `timestamp` must be parseable as a valid ISO-8601 datetime string. |
+| 3b | **Temporal — event\_date** | `event_date` must be a valid ISO date string (`YYYY-MM-DD`). |
+| 3c | **Temporal — Consistency** | `event_date` must equal the UTC calendar date derived from `timestamp`. A mismatch means the date index was built incorrectly. |
+| 4 | **Record Count Parity** | The number of records in `retrieval_ready_records.json` must equal `records_built` in `retrieval_prep_summary.json`. |
+| 5 | **Accounting Identity** | `records_built + skipped_records == total_records` in the summary. Any discrepancy means the builder silently dropped or double-counted input triples. |
+| 6 | **Pipeline Status** | `status` must be `"success"` when `skipped_records == 0` and `"partial"` when `skipped_records > 0`. Any other value or mismatch is flagged. |
+
+### ValidationResult Schema
+
+| Field | Type | Description |
+|---|---|---|
+| `is_valid` | `bool` | `True` if no errors were found. Warnings do not affect this flag. |
+| `errors` | `List[str]` | Blocking validation errors with human-readable messages. |
+| `warnings` | `List[str]` | Non-blocking notices. |
+| `stats` | `dict` | Diagnostic counts: `records_file_count`, `unique_record_ids`, `unique_triple_ids`, `duplicate_record_ids`, `duplicate_triple_ids`, `provenance_violations`, `invalid_timestamps`, `invalid_event_dates`, `inconsistent_dates`. |
+
+### Python Usage
+
+```python
+from pathlib import Path
+from src.retrieval.validator import RetrievalOutputValidator
+
+validator = RetrievalOutputValidator(
+    records_path=Path("data/processed/retrieval_ready_records.json"),
+    summary_path=Path("data/processed/retrieval_prep_summary.json"),
+)
+result = validator.validate()
+
+print(result.is_valid)   # True
+print(result.errors)     # [] on a clean run
+print(result.stats)      # {'records_file_count': 142, 'unique_record_ids': 142, ...}
+```
+
+### CLI Output
+
+The validator runs automatically at the end of `python main.py --prepare-retrieval`
+and prints a validation summary section:
+
+```
+------------------------------------------------------------
+  Week 3: Retrieval Output Validation
+------------------------------------------------------------
+  Validation: PASSED  (0 error(s), 0 warning(s))
+  Unique record_ids: 142  Unique triple_ids: 142  Provenance violations: 0  Temporal errors: 0
+```
+
+If errors are found, a table listing each error is displayed before the stats.
+
+> [!NOTE]
+> The validator is read-only. It never modifies `retrieval_ready_records.json`
+> or `retrieval_prep_summary.json`.

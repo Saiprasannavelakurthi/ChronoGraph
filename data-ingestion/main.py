@@ -467,8 +467,69 @@ def run_retrieval_prep() -> dict:
 
     _print_info(f"retrieval_ready_records.json -> {settings.retrieval_ready_records_path}")
     _print_info(f"retrieval_prep_summary.json  -> {settings.retrieval_prep_summary_path}")
-    return report
 
+    # ── Week 3 Output Validation ──────────────────────────────────────────────
+    from src.retrieval.validator import RetrievalOutputValidator
+
+    _print_section("Week 3: Retrieval Output Validation")
+    validator = RetrievalOutputValidator(
+        records_path=settings.retrieval_ready_records_path,
+        summary_path=settings.retrieval_prep_summary_path,
+    )
+    val_result = validator.validate()
+
+    if _RICH:
+        from rich.table import Table
+        val_status_style = "bold green" if val_result.is_valid else "bold red"
+        val_status_label = "PASSED" if val_result.is_valid else "FAILED"
+        console.print(
+            f"  [{val_status_style}]Validation: {val_status_label}[/{val_status_style}]  "
+            f"({len(val_result.errors)} error(s), {len(val_result.warnings)} warning(s))"
+        )
+        if val_result.errors:
+            t_err = Table(
+                show_header=True,
+                header_style="bold red",
+                title="Validation Errors",
+            )
+            t_err.add_column("#", style="bold", min_width=3)
+            t_err.add_column("Error", style="red")
+            for idx, err in enumerate(val_result.errors, 1):
+                t_err.add_row(str(idx), err)
+            console.print(t_err)
+        if val_result.warnings:
+            for w in val_result.warnings:
+                console.print(f"  [yellow]  WARNING: {w}[/yellow]")
+        # Stats summary
+        stats = val_result.stats
+        console.print(
+            f"  [cyan]Unique record_ids:[/cyan] {stats.get('unique_record_ids', 'N/A')}  "
+            f"[cyan]Unique triple_ids:[/cyan] {stats.get('unique_triple_ids', 'N/A')}  "
+            f"[cyan]Provenance violations:[/cyan] {stats.get('provenance_violations', 0)}  "
+            f"[cyan]Temporal errors:[/cyan] "
+            f"{stats.get('invalid_timestamps', 0) + stats.get('invalid_event_dates', 0) + stats.get('inconsistent_dates', 0)}"
+        )
+    else:
+        val_label = "PASSED" if val_result.is_valid else "FAILED"
+        print(f"\n  Validation: {val_label}")
+        print(f"  Errors   : {len(val_result.errors)}")
+        print(f"  Warnings : {len(val_result.warnings)}")
+        for idx, err in enumerate(val_result.errors, 1):
+            print(f"    [{idx}] ERROR: {err}")
+        for w in val_result.warnings:
+            print(f"    WARNING: {w}")
+        stats = val_result.stats
+        print(f"  unique_record_ids    : {stats.get('unique_record_ids', 'N/A')}")
+        print(f"  unique_triple_ids    : {stats.get('unique_triple_ids', 'N/A')}")
+        print(f"  provenance_violations: {stats.get('provenance_violations', 0)}")
+        print(f"  invalid_timestamps   : {stats.get('invalid_timestamps', 0)}")
+        print(f"  invalid_event_dates  : {stats.get('invalid_event_dates', 0)}")
+        print(f"  inconsistent_dates   : {stats.get('inconsistent_dates', 0)}")
+
+    report["validation_passed"] = val_result.is_valid
+    report["validation_errors"] = val_result.errors
+    report["validation_warnings"] = val_result.warnings
+    return report
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Entry point

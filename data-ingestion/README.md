@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![LlamaIndex](https://img.shields.io/badge/LlamaIndex-0.10%2B-purple.svg)](https://www.llamaindex.ai/)
 [![Groq LLM](https://img.shields.io/badge/Groq-llama--3.1--8b--instant-orange.svg)](https://groq.com/)
-[![Tests](https://img.shields.io/badge/tests-346%20passed-brightgreen.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/tests-387%20passed-brightgreen.svg)](https://docs.pytest.org/)
 
 **ChronoGraph** is a Temporal GraphRAG pipeline engineered for enterprise forensics, knowledge graph extraction, and cross-platform communication analytics. It ingests unstructured developer communications (Slack messages, GitHub PRs/issues, Jira tickets), extracts temporal entity-relationship triples using LlamaIndex & Groq LLMs (with robust heuristic fallbacks), validates and normalizes entities/relations, deduplicates records, and prepares citation-ready chronological retrieval evidence records for downstream Temporal Routing and GraphRAG answer generation.
 
@@ -122,10 +122,11 @@ data-ingestion/
 │   │   ├── slack_loader.py           # Slack messages ingestor
 │   │   └── pipeline.py               # Multi-source ingestion orchestrator
 │   ├── retrieval/
-│   │   ├── __init__.py               # Public exports (models, builder, filter engine)
+│   │   ├── __init__.py               # Public exports (models, builder, filter engine, validator)
 │   │   ├── builder.py                # Builds RetrievalRecord list + writes execution metadata
 │   │   ├── filter.py                 # In-memory chronological & entity filter engine
-│   │   └── models.py                 # RetrievalRecord, TemporalFilter, RetrievalRequest, PipelineExecutionMetadata
+│   │   ├── models.py                 # RetrievalRecord, TemporalFilter, RetrievalRequest, PipelineExecutionMetadata
+│   │   └── validator.py              # Post-build consistency validator (RetrievalOutputValidator)
 │   └── schemas/
 │       ├── __init__.py
 │       └── graph.py                  # Pydantic schemas (RawEvent, Triple, ExtractedGraph)
@@ -169,7 +170,8 @@ data-ingestion/
 - **RetrievalRecordBuilder**: Transforms `graph_ready_triples.json` into `retrieval_ready_records.json`, parsing calendar dates and extracting source URLs from metadata without data fabrication.
 - **PipelineExecutionMetadata**: After each run, writes `retrieval_prep_summary.json` capturing `pipeline_name`, `input_source`, `total_records`, `records_built`, `skipped_records`, `generated_at` (UTC), and `status`. The main records contract is never modified.
 - **TemporalFilterEngine**: In-memory Python engine applying chronological sorting (ASC/DESC), date range filtering, before/after filtering, exact date filtering, entity matching, and relation filtering.
-- **Data Contract**: Formal specification for temporal retrieval records and execution metadata ([`docs/RETRIEVAL_DATA_CONTRACT.md`](docs/RETRIEVAL_DATA_CONTRACT.md)).
+- **RetrievalOutputValidator**: Post-build consistency validator that automatically verifies the two generated artefacts are internally consistent. Checks include: unique identifiers, required provenance fields, temporal metadata validity and consistency, record count parity, accounting identity, and pipeline status correctness. All errors carry human-readable messages identifying the offending field and record.
+- **Data Contract**: Formal specification for temporal retrieval records, execution metadata, and validation rules ([`docs/RETRIEVAL_DATA_CONTRACT.md`](docs/RETRIEVAL_DATA_CONTRACT.md)).
 
 ---
 
@@ -410,11 +412,11 @@ python -m pytest tests/ -q
 ```
 
 ### Verified Test Status
-- **327 passed** tests across 4 test modules:
+- **387 passed** tests across 4 test modules:
   - `tests/test_ingestion.py` — Ingestion loaders, preprocessing, and normalization (Week 1)
   - `tests/test_extraction.py` — LlamaIndex/Groq extraction and heuristic fallbacks (Week 1)
   - `tests/test_graph_prep.py` — Graph preparation validation, normalization, and deduplication (Week 2)
-  - `tests/test_retrieval.py` — RetrievalRecordBuilder, TemporalFilterEngine, and models (Week 3)
+  - `tests/test_retrieval.py` — RetrievalRecordBuilder, TemporalFilterEngine, models, and RetrievalOutputValidator (Week 3)
 
 ---
 

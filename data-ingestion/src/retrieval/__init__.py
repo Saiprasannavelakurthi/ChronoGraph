@@ -9,6 +9,7 @@ Public API:
     from src.retrieval.models import PipelineExecutionMetadata
     from src.retrieval.builder import RetrievalRecordBuilder
     from src.retrieval.filter import TemporalFilterEngine
+    from src.retrieval.validator import RetrievalOutputValidator, ValidationResult
 
 This module does NOT own Neo4j, Cypher, or natural-language-to-query conversion.
 It prepares retrieval-ready evidence records and lightweight filter schemas so the
@@ -23,6 +24,7 @@ from src.retrieval.models import (
 )
 from src.retrieval.builder import RetrievalRecordBuilder
 from src.retrieval.filter import TemporalFilterEngine
+from src.retrieval.validator import RetrievalOutputValidator, ValidationResult
 
 __all__ = [
     "PipelineExecutionMetadata",
@@ -31,4 +33,6 @@ __all__ = [
     "TemporalFilter",
     "RetrievalRecordBuilder",
     "TemporalFilterEngine",
+    "RetrievalOutputValidator",
+    "ValidationResult",
 ]
