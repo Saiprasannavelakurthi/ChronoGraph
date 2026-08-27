@@ -53,7 +53,16 @@ def test_connection():
                 "RETURN 'ChronoGraph connection successful!' AS message"
             )
             print(result.single()["message"])
-            print("Neo4j Browser: http://localhost:7474/browser/")
+
+            if "databases.neo4j.io" in (URI or ""):
+                # Aura (cloud) instance — there is no local server, so
+                # localhost:7474 will never work. Point to the Aura console instead.
+                print("Neo4j Aura detected — open your graph via the Aura Console:")
+                print("  1. Go to https://console.neo4j.io")
+                print("  2. Find your instance and click 'Open' to launch Neo4j Browser")
+            else:
+                print("Neo4j Browser: http://localhost:7474/browser/")
+
             return True
     except Exception as exc:
         print(f"Connection failed: {exc}")
@@ -63,4 +72,3 @@ def test_connection():
 if __name__ == "__main__":
     test_connection()
     driver.close()
-

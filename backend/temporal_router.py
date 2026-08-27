@@ -32,6 +32,79 @@ with open(QUERY_FILE, "r", encoding="utf-8") as file:
 
 
 # ---------------------------------------------------------
+# Load real entity names from the data-ingestion module
+# ---------------------------------------------------------
+#
+# Week 1/2 used a hardcoded demo graph (Rahul, Priya, AWS, GCP).
+# Week 3 now integrates Karkuvel's real graph_ready_triples.json,
+# which contains real people (e.g. arun_sharma) and entities of many
+# types (Technology, Database, Service, Project, ArchitectureDecision,
+# Issue, Problem). Instead of hardcoding names, we load the known
+# entities from that file so intent detection and entity extraction
+# work on real data, not just the demo names.
+
+GRAPH_DATA_CANDIDATES = [
+    BASE_DIR.parent / "data-ingestion" / "data" / "processed" / "graph_ready_triples.json",
+    Path("data-ingestion/data/processed/graph_ready_triples.json"),
+    Path("../data-ingestion/data/processed/graph_ready_triples.json"),
+]
+
+# Fallback demo names always stay valid so Week 1/2 behavior and
+# existing tests keep working even if the ingestion file is absent.
+KNOWN_PERSON_NAMES = {"rahul", "priya"}
+KNOWN_TECHNOLOGY_NAMES = {"aws", "gcp"}
+
+# display-name lookup so we can return the properly cased form,
+# e.g. "arun_sharma" -> "Arun Sharma"
+_DISPLAY_NAME_LOOKUP = {"rahul": "Rahul", "priya": "Priya", "aws": "AWS", "gcp": "GCP"}
+
+
+def _load_known_entities():
+    """
+    Populate KNOWN_PERSON_NAMES / KNOWN_TECHNOLOGY_NAMES from the real
+    ingestion data if it's available. Non-Person entity types
+    (Technology, Database, Service, Project, ArchitectureDecision,
+    Issue, Problem) are all treated as "technology" style lookups so
+    build_query's technology_history intent can match any of them.
+    """
+    for candidate in GRAPH_DATA_CANDIDATES:
+        if candidate.exists():
+            with open(candidate, "r", encoding="utf-8") as f:
+                triples = json.load(f)
+
+            for t in triples:
+                for role in ("subject", "object"):
+                    entity_type = t.get(f"{role}_type", "")
+                    raw_name = t.get(role, "")
+                    display_name = t.get(f"{role}_display", raw_name)
+
+                    if not raw_name:
+                        continue
+
+                    key = raw_name.lower().replace("_", " ")
+
+                    if entity_type == "Person":
+                        KNOWN_PERSON_NAMES.add(key)
+                    else:
+                        KNOWN_TECHNOLOGY_NAMES.add(key)
+
+                    # The ingestion pipeline title-cases most entity
+                    # types (e.g. "PostgreSQL", "GCP") but leaves
+                    # Person display names as raw slugs
+                    # (e.g. "arun_sharma"). Clean those up so answers
+                    # read naturally.
+                    if display_name == raw_name and "_" in display_name:
+                        display_name = display_name.replace("_", " ").title()
+
+                    _DISPLAY_NAME_LOOKUP[key] = display_name
+
+            break  # stop at the first candidate that exists
+
+
+_load_known_entities()
+
+
+# ---------------------------------------------------------
 # Neo4j connection
 # ---------------------------------------------------------
 
@@ -133,20 +206,22 @@ def detect_intent(question):
     ):
         return "events_after"
 
-    # Technology history
+    # Technology history (now covers any non-Person entity from the
+    # real ingestion data: Technology, Database, Service, Project, etc.)
     if any(
         technology in text
-        for technology in ["gcp", "aws"]
+        for technology in KNOWN_TECHNOLOGY_NAMES
     ) and any(
         word in text
         for word in ["history", "events", "related", "activity"]
     ):
         return "technology_history"
 
-    # Person history
+    # Person history (covers real people from the ingestion data,
+    # e.g. "arun_sharma", in addition to the original demo names)
     if any(
         person in text
-        for person in ["rahul", "priya"]
+        for person in KNOWN_PERSON_NAMES
     ) and any(
         word in text
         for word in ["history", "events", "activity", "actions"]
@@ -177,9 +252,11 @@ def detect_intent(question):
 def extract_person(question):
     text = question.lower()
 
-    for person in ["rahul", "priya"]:
+    # Prefer the longest match first so "arun sharma" wins over
+    # a shorter partial match if both happened to appear.
+    for person in sorted(KNOWN_PERSON_NAMES, key=len, reverse=True):
         if person in text:
-            return person.capitalize()
+            return _DISPLAY_NAME_LOOKUP.get(person, person.title())
 
     return None
 
@@ -187,9 +264,9 @@ def extract_person(question):
 def extract_technology(question):
     text = question.lower()
 
-    for technology in ["aws", "gcp"]:
+    for technology in sorted(KNOWN_TECHNOLOGY_NAMES, key=len, reverse=True):
         if technology in text:
-            return technology.upper()
+            return _DISPLAY_NAME_LOOKUP.get(technology, technology.upper())
 
     return None
 
