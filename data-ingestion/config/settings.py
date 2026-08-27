@@ -142,6 +142,12 @@ class Settings(BaseSettings):
         """Week 3 pipeline execution metadata summary."""
         return self.processed_data_dir / "retrieval_prep_summary.json"
 
+    @property
+    def retrieval_quality_stats_path(self) -> Path:
+        """Week 3 retrieval data quality and coverage statistics."""
+        return self.processed_data_dir / "retrieval_quality_stats.json"
+
+
     @model_validator(mode="after")
     def apply_llm_model_override(self) -> Settings:
         if self.llm_model:

@@ -127,6 +127,92 @@ class PipelineExecutionMetadata(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# RetrievalDataQualityStats
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class RetrievalDataQualityStats(BaseModel):
+    """
+    Data quality and coverage statistics computed from retrieval_ready_records.json.
+
+    Produced by RetrievalStatsEngine and written to
+    retrieval_quality_stats.json alongside the main records file.
+
+    Fields
+    ──────
+    total_records               : Total number of records in the file.
+    unique_entities             : Count of distinct entity values (subjects + objects,
+                                  both canonical and display names deduplicated).
+    unique_relations            : Count of distinct relation type labels.
+    records_with_temporal_data  : Records whose timestamp and event_date are
+                                  both present and parseable.
+    records_without_temporal_data : Records where temporal data is missing or invalid.
+    earliest_timestamp          : ISO-8601 string of the earliest event_date found,
+                                  or None if no records exist.
+    latest_timestamp            : ISO-8601 string of the latest event_date found,
+                                  or None if no records exist.
+    source_breakdown            : Per-source record counts {'slack': N, 'github': N, 'jira': N}.
+    average_confidence          : Mean extraction confidence score, or None if no records.
+    records_with_source_url     : Records that carry a non-null source_url.
+    generated_at                : UTC ISO-8601 timestamp of when these stats were computed.
+    """
+
+    total_records: int = Field(ge=0, description="Total records in retrieval_ready_records.json.")
+    unique_entities: int = Field(ge=0, description="Distinct entity values across all records.")
+    unique_relations: int = Field(ge=0, description="Distinct relation type labels across all records.")
+    records_with_temporal_data: int = Field(
+        ge=0,
+        description="Records with valid, parseable timestamp and event_date.",
+    )
+    records_without_temporal_data: int = Field(
+        ge=0,
+        description="Records where temporal metadata is missing or unparseable.",
+    )
+    earliest_timestamp: Optional[str] = Field(
+        default=None,
+        description="Earliest event_date (YYYY-MM-DD) found, or None if no records.",
+    )
+    latest_timestamp: Optional[str] = Field(
+        default=None,
+        description="Latest event_date (YYYY-MM-DD) found, or None if no records.",
+    )
+    source_breakdown: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Record count per source system (e.g. {'slack': 51, 'github': 40, 'jira': 51}).",
+    )
+    average_confidence: Optional[float] = Field(
+        default=None,
+        description="Mean confidence score across all records, or None if no records.",
+    )
+    records_with_source_url: int = Field(
+        ge=0,
+        description="Number of records that carry a non-null source_url.",
+    )
+    generated_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
+        description="UTC ISO-8601 timestamp of when this stats report was generated.",
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize to a plain JSON-compatible dict."""
+        return {
+            "total_records": self.total_records,
+            "unique_entities": self.unique_entities,
+            "unique_relations": self.unique_relations,
+            "records_with_temporal_data": self.records_with_temporal_data,
+            "records_without_temporal_data": self.records_without_temporal_data,
+            "earliest_timestamp": self.earliest_timestamp,
+            "latest_timestamp": self.latest_timestamp,
+            "source_breakdown": self.source_breakdown,
+            "average_confidence": self.average_confidence,
+            "records_with_source_url": self.records_with_source_url,
+            "generated_at": self.generated_at,
+        }
+
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # TemporalFilter
 # ─────────────────────────────────────────────────────────────────────────────
 

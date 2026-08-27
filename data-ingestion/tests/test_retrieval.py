@@ -1958,3 +1958,542 @@ class TestRetrievalOutputValidator:
         # Must catch the duplicate record_id
         assert result.is_valid is False
         assert any("Check 1" in e for e in result.errors)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 28. RetrievalDataQualityStats model & RetrievalStatsEngine
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+from src.retrieval.stats import RetrievalStatsEngine
+from src.retrieval.models import RetrievalDataQualityStats
+
+
+# ── Shared helpers ────────────────────────────────────────────────────────────
+
+
+def _make_record(
+    record_id="rec-1",
+    triple_id="rec-1",
+    subject="arun_sharma",
+    subject_display="Arun Sharma",
+    subject_type="Person",
+    relation="ADVOCATED_FOR",
+    object="gcp",
+    object_display="GCP",
+    object_type="Technology",
+    timestamp="2023-03-15T10:30:00+00:00",
+    event_date="2023-03-15",
+    source="slack",
+    source_id="slack_001",
+    source_url=None,
+    evidence="Arun advocated for GCP migration.",
+    confidence=0.9,
+    extraction_mode="fallback",
+    metadata=None,
+):
+    """Construct a minimal retrieval record dict."""
+    return {
+        "record_id": record_id,
+        "triple_id": triple_id,
+        "subject": subject,
+        "subject_display": subject_display,
+        "subject_type": subject_type,
+        "relation": relation,
+        "object": object,
+        "object_display": object_display,
+        "object_type": object_type,
+        "timestamp": timestamp,
+        "event_date": event_date,
+        "source": source,
+        "source_id": source_id,
+        "source_url": source_url,
+        "evidence": evidence,
+        "confidence": confidence,
+        "extraction_mode": extraction_mode,
+        "metadata": metadata or {},
+    }
+
+
+def _write_json(path, data):
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+
+class TestRetrievalDataQualityStats:
+    """Unit tests for the RetrievalDataQualityStats Pydantic model."""
+
+    def test_default_optional_fields(self):
+        """Optional fields default to None/empty dict."""
+        stats = RetrievalDataQualityStats(
+            total_records=0,
+            unique_entities=0,
+            unique_relations=0,
+            records_with_temporal_data=0,
+            records_without_temporal_data=0,
+            records_with_source_url=0,
+        )
+        assert stats.earliest_timestamp is None
+        assert stats.latest_timestamp is None
+        assert stats.average_confidence is None
+        assert stats.source_breakdown == {}
+
+    def test_to_dict_contains_all_required_keys(self):
+        """to_dict() must contain all 11 required stat keys."""
+        stats = RetrievalDataQualityStats(
+            total_records=10,
+            unique_entities=5,
+            unique_relations=3,
+            records_with_temporal_data=9,
+            records_without_temporal_data=1,
+            earliest_timestamp="2023-03-15",
+            latest_timestamp="2023-05-30",
+            source_breakdown={"slack": 5, "github": 3, "jira": 2},
+            average_confidence=0.87,
+            records_with_source_url=2,
+        )
+        d = stats.to_dict()
+        required_keys = {
+            "total_records",
+            "unique_entities",
+            "unique_relations",
+            "records_with_temporal_data",
+            "records_without_temporal_data",
+            "earliest_timestamp",
+            "latest_timestamp",
+            "source_breakdown",
+            "average_confidence",
+            "records_with_source_url",
+            "generated_at",
+        }
+        assert required_keys.issubset(set(d.keys()))
+
+    def test_to_dict_values_correct(self):
+        """to_dict() values match field values exactly."""
+        stats = RetrievalDataQualityStats(
+            total_records=5,
+            unique_entities=4,
+            unique_relations=2,
+            records_with_temporal_data=5,
+            records_without_temporal_data=0,
+            earliest_timestamp="2023-01-01",
+            latest_timestamp="2023-12-31",
+            source_breakdown={"slack": 3, "jira": 2},
+            average_confidence=0.75,
+            records_with_source_url=1,
+        )
+        d = stats.to_dict()
+        assert d["total_records"] == 5
+        assert d["unique_entities"] == 4
+        assert d["unique_relations"] == 2
+        assert d["earliest_timestamp"] == "2023-01-01"
+        assert d["latest_timestamp"] == "2023-12-31"
+        assert d["average_confidence"] == 0.75
+        assert d["records_with_source_url"] == 1
+
+    def test_negative_counts_rejected(self):
+        """Pydantic rejects negative counts for ge=0 fields."""
+        import pytest
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
+            RetrievalDataQualityStats(
+                total_records=-1,
+                unique_entities=0,
+                unique_relations=0,
+                records_with_temporal_data=0,
+                records_without_temporal_data=0,
+                records_with_source_url=0,
+            )
+
+    def test_generated_at_auto_populated(self):
+        """generated_at is automatically set to a UTC ISO-8601 string."""
+        stats = RetrievalDataQualityStats(
+            total_records=0,
+            unique_entities=0,
+            unique_relations=0,
+            records_with_temporal_data=0,
+            records_without_temporal_data=0,
+            records_with_source_url=0,
+        )
+        assert stats.generated_at
+        # Must be parseable as ISO-8601
+        from datetime import datetime
+        datetime.fromisoformat(stats.generated_at)
+
+
+class TestRetrievalStatsEngine:
+    """Comprehensive tests for the RetrievalStatsEngine."""
+
+    # ── File loading ──────────────────────────────────────────────────────────
+
+    def test_missing_records_file_raises(self, tmp_path):
+        """FileNotFoundError raised when records file does not exist."""
+        import pytest
+        engine = RetrievalStatsEngine(
+            records_path=tmp_path / "nonexistent.json"
+        )
+        with pytest.raises(FileNotFoundError):
+            engine.compute()
+
+    def test_invalid_json_raises(self, tmp_path):
+        """JSONDecodeError raised for malformed JSON in records file."""
+        import pytest
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        rec_path.write_text("not-json{{{{", encoding="utf-8")
+        engine = RetrievalStatsEngine(records_path=rec_path)
+        with pytest.raises(Exception):
+            engine.compute()
+
+    def test_non_array_json_raises_value_error(self, tmp_path):
+        """ValueError raised when records file is a JSON object, not array."""
+        import pytest
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        rec_path.write_text('{"key": "value"}', encoding="utf-8")
+        engine = RetrievalStatsEngine(records_path=rec_path)
+        with pytest.raises(ValueError, match="JSON array"):
+            engine.compute()
+
+    # ── Empty records ─────────────────────────────────────────────────────────
+
+    def test_empty_records_returns_zero_stats(self, tmp_path):
+        """Empty records array produces all-zero / None stats."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, [])
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+
+        assert stats.total_records == 0
+        assert stats.unique_entities == 0
+        assert stats.unique_relations == 0
+        assert stats.records_with_temporal_data == 0
+        assert stats.records_without_temporal_data == 0
+        assert stats.earliest_timestamp is None
+        assert stats.latest_timestamp is None
+        assert stats.average_confidence is None
+        assert stats.records_with_source_url == 0
+        assert stats.source_breakdown == {}
+
+    # ── Single record ─────────────────────────────────────────────────────────
+
+    def test_single_record_total_count(self, tmp_path):
+        """Single record gives total_records == 1."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, [_make_record()])
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert stats.total_records == 1
+
+    def test_single_record_temporal_data(self, tmp_path):
+        """Valid timestamp/event_date counted in records_with_temporal_data."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, [_make_record()])
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert stats.records_with_temporal_data == 1
+        assert stats.records_without_temporal_data == 0
+
+    def test_single_record_earliest_latest(self, tmp_path):
+        """Single record: earliest_timestamp == latest_timestamp."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, [_make_record(event_date="2023-04-10")])
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert stats.earliest_timestamp == "2023-04-10"
+        assert stats.latest_timestamp == "2023-04-10"
+
+    def test_single_record_confidence(self, tmp_path):
+        """Single record: average_confidence equals its confidence value."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, [_make_record(confidence=0.75)])
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert stats.average_confidence == pytest.approx(0.75, abs=1e-4)
+
+    def test_single_record_source_breakdown(self, tmp_path):
+        """Single record: source_breakdown contains exactly one entry."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, [_make_record(source="jira")])
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert stats.source_breakdown == {"jira": 1}
+
+    # ── Multiple records ──────────────────────────────────────────────────────
+
+    def test_three_records_total_count(self, tmp_path):
+        """Three records gives total_records == 3."""
+        records = [
+            _make_record("r1", "r1", source="slack"),
+            _make_record("r2", "r2", source="github"),
+            _make_record("r3", "r3", source="jira"),
+        ]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, records)
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert stats.total_records == 3
+
+    def test_source_breakdown_multi_source(self, tmp_path):
+        """Multi-source records produce correct per-source counts."""
+        records = [
+            _make_record("r1", "r1", source="slack"),
+            _make_record("r2", "r2", source="slack"),
+            _make_record("r3", "r3", source="github"),
+            _make_record("r4", "r4", source="jira"),
+        ]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, records)
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert stats.source_breakdown["slack"] == 2
+        assert stats.source_breakdown["github"] == 1
+        assert stats.source_breakdown["jira"] == 1
+
+    # ── Unique entities ───────────────────────────────────────────────────────
+
+    def test_unique_entities_deduplicates_across_records(self, tmp_path):
+        """Same entity appearing in multiple records is counted once."""
+        records = [
+            _make_record(
+                "r1", "r1",
+                subject="arun_sharma", subject_display="Arun Sharma",
+                object="gcp", object_display="GCP",
+            ),
+            _make_record(
+                "r2", "r2",
+                subject="arun_sharma", subject_display="Arun Sharma",  # same entities
+                object="gcp", object_display="GCP",
+            ),
+        ]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, records)
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        # Only 2 unique entity values: arun_sharma/Arun Sharma → "arun sharma", "arun_sharma"; gcp/GCP → "gcp"
+        # The exact dedup uses .lower() so "arun sharma" != "arun_sharma"
+        # What matters: count is smaller than 2*4=8
+        assert stats.unique_entities < 8
+        assert stats.unique_entities >= 1
+
+    def test_unique_entities_different_records(self, tmp_path):
+        """Different entities across records are all counted."""
+        records = [
+            _make_record("r1", "r1", subject="alice", object="project_alpha"),
+            _make_record("r2", "r2", subject="bob", object="project_beta"),
+        ]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, records)
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        # At minimum these 4 canonical names are unique
+        assert stats.unique_entities >= 4
+
+    # ── Unique relations ──────────────────────────────────────────────────────
+
+    def test_unique_relations_deduplicates(self, tmp_path):
+        """Same relation appearing multiple times is counted once."""
+        records = [
+            _make_record("r1", "r1", relation="ADVOCATED_FOR"),
+            _make_record("r2", "r2", relation="ADVOCATED_FOR"),
+            _make_record("r3", "r3", relation="MIGRATED_TO"),
+        ]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, records)
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert stats.unique_relations == 2
+
+    def test_unique_relations_case_normalised(self, tmp_path):
+        """Relations are uppercased before deduplication."""
+        records = [
+            _make_record("r1", "r1", relation="advocated_for"),
+            _make_record("r2", "r2", relation="ADVOCATED_FOR"),
+        ]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, records)
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert stats.unique_relations == 1
+
+    # ── Temporal data ─────────────────────────────────────────────────────────
+
+    def test_records_without_temporal_data_counted(self, tmp_path):
+        """Record with missing/invalid timestamp is counted as without temporal data."""
+        records = [
+            _make_record("r1", "r1"),  # valid
+            _make_record("r2", "r2", timestamp="", event_date=""),  # invalid
+        ]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, records)
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert stats.records_with_temporal_data == 1
+        assert stats.records_without_temporal_data == 1
+
+    def test_invalid_event_date_counted_as_without_temporal(self, tmp_path):
+        """Record with bad event_date string is without_temporal."""
+        records = [_make_record("r1", "r1", event_date="not-a-date")]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, records)
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert stats.records_without_temporal_data == 1
+
+    def test_earliest_and_latest_timestamp_correct(self, tmp_path):
+        """Correctly identifies the min and max event_date values."""
+        records = [
+            _make_record("r1", "r1", event_date="2023-05-01"),
+            _make_record("r2", "r2", event_date="2023-01-15"),
+            _make_record("r3", "r3", event_date="2023-12-31"),
+        ]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, records)
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert stats.earliest_timestamp == "2023-01-15"
+        assert stats.latest_timestamp == "2023-12-31"
+
+    # ── Confidence ────────────────────────────────────────────────────────────
+
+    def test_average_confidence_correct(self, tmp_path):
+        """Average confidence is correctly calculated."""
+        records = [
+            _make_record("r1", "r1", confidence=0.8),
+            _make_record("r2", "r2", confidence=0.6),
+            _make_record("r3", "r3", confidence=1.0),
+        ]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, records)
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        expected = round((0.8 + 0.6 + 1.0) / 3, 4)
+        assert stats.average_confidence == pytest.approx(expected, abs=1e-4)
+
+    # ── source_url ────────────────────────────────────────────────────────────
+
+    def test_records_with_source_url_counted(self, tmp_path):
+        """Records with non-null source_url are counted separately."""
+        records = [
+            _make_record("r1", "r1", source_url="https://example.com/1"),
+            _make_record("r2", "r2", source_url=None),
+            _make_record("r3", "r3", source_url="https://example.com/3"),
+        ]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, records)
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert stats.records_with_source_url == 2
+
+    def test_no_source_urls_gives_zero(self, tmp_path):
+        """All null source_url values -> records_with_source_url == 0."""
+        records = [_make_record("r1", "r1", source_url=None)]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, records)
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert stats.records_with_source_url == 0
+
+    # ── File output ───────────────────────────────────────────────────────────
+
+    def test_stats_written_to_file_when_path_provided(self, tmp_path):
+        """When stats_path is given, stats JSON file is created."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        stats_path = tmp_path / "retrieval_quality_stats.json"
+        _write_json(rec_path, [_make_record()])
+
+        RetrievalStatsEngine(
+            records_path=rec_path,
+            stats_path=stats_path,
+        ).compute()
+
+        assert stats_path.exists()
+        data = json.loads(stats_path.read_text(encoding="utf-8"))
+        assert "total_records" in data
+        assert data["total_records"] == 1
+
+    def test_no_file_written_when_stats_path_is_none(self, tmp_path):
+        """When stats_path is None, no output file is written."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, [_make_record()])
+        default_path = tmp_path / "retrieval_quality_stats.json"
+
+        RetrievalStatsEngine(records_path=rec_path, stats_path=None).compute()
+
+        # No stats file should have appeared
+        assert not default_path.exists()
+
+    def test_stats_file_contains_all_required_keys(self, tmp_path):
+        """Written stats JSON has all required top-level keys."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        stats_path = tmp_path / "retrieval_quality_stats.json"
+        _write_json(rec_path, [_make_record()])
+
+        RetrievalStatsEngine(
+            records_path=rec_path, stats_path=stats_path
+        ).compute()
+
+        data = json.loads(stats_path.read_text(encoding="utf-8"))
+        for key in (
+            "total_records",
+            "unique_entities",
+            "unique_relations",
+            "records_with_temporal_data",
+            "records_without_temporal_data",
+            "earliest_timestamp",
+            "latest_timestamp",
+            "source_breakdown",
+            "average_confidence",
+            "records_with_source_url",
+            "generated_at",
+        ):
+            assert key in data, f"Missing key in stats output: {key!r}"
+
+    # ── Integration: builder -> stats ─────────────────────────────────────────
+
+    def test_stats_on_builder_output_matches_builder_report(self, tmp_path):
+        """Stats computed on builder output match the builder's own counts."""
+        from src.retrieval.builder import RetrievalRecordBuilder
+
+        input_file = tmp_path / "graph_ready_triples.json"
+        input_file.write_text(
+            json.dumps(MOCK_GRAPH_READY_TRIPLES), encoding="utf-8"
+        )
+        output_file = tmp_path / "retrieval_ready_records.json"
+        summary_file = tmp_path / "retrieval_prep_summary.json"
+
+        _, report, _ = RetrievalRecordBuilder(
+            input_path=input_file,
+            output_path=output_file,
+            summary_path=summary_file,
+        ).build()
+
+        stats = RetrievalStatsEngine(records_path=output_file).compute()
+
+        # Stats total must equal builder's records_built
+        assert stats.total_records == report["records_built"]
+
+    def test_stats_on_builder_output_temporal_coverage(self, tmp_path):
+        """All builder-produced records should have valid temporal data."""
+        from src.retrieval.builder import RetrievalRecordBuilder
+
+        input_file = tmp_path / "graph_ready_triples.json"
+        input_file.write_text(
+            json.dumps(MOCK_GRAPH_READY_TRIPLES), encoding="utf-8"
+        )
+        output_file = tmp_path / "retrieval_ready_records.json"
+        summary_file = tmp_path / "retrieval_prep_summary.json"
+
+        RetrievalRecordBuilder(
+            input_path=input_file,
+            output_path=output_file,
+            summary_path=summary_file,
+        ).build()
+
+        stats = RetrievalStatsEngine(records_path=output_file).compute()
+
+        # All mock triples have valid timestamps
+        assert stats.records_without_temporal_data == 0
+        assert stats.records_with_temporal_data == stats.total_records
+
+    def test_stats_returns_retrievaldataqualitystats_instance(self, tmp_path):
+        """compute() returns a RetrievalDataQualityStats instance."""
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, [_make_record()])
+        result = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert isinstance(result, RetrievalDataQualityStats)
+
+    def test_stats_with_temporal_plus_without_equals_total(self, tmp_path):
+        """records_with_temporal_data + records_without_temporal_data == total_records."""
+        records = [
+            _make_record("r1", "r1"),
+            _make_record("r2", "r2", timestamp="bad", event_date=""),
+            _make_record("r3", "r3"),
+        ]
+        rec_path = tmp_path / "retrieval_ready_records.json"
+        _write_json(rec_path, records)
+        stats = RetrievalStatsEngine(records_path=rec_path).compute()
+        assert (
+            stats.records_with_temporal_data + stats.records_without_temporal_data
+            == stats.total_records
+        )
+

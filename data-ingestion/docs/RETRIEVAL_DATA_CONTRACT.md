@@ -392,3 +392,63 @@ If errors are found, a table listing each error is displayed before the stats.
 > [!NOTE]
 > The validator is read-only. It never modifies `retrieval_ready_records.json`
 > or `retrieval_prep_summary.json`.
+
+---
+
+## Data Quality Statistics
+
+The `RetrievalStatsEngine` computes data quality and coverage statistics from
+`retrieval_ready_records.json` and writes them to `retrieval_quality_stats.json`.
+
+### CLI
+
+```bash
+python main.py --retrieval-stats
+```
+
+### Output File: `retrieval_quality_stats.json`
+
+| Field | Type | Description |
+|---|---|---|
+| `total_records` | `int` | Total records in `retrieval_ready_records.json`. |
+| `unique_entities` | `int` | Distinct entity values (subjects + objects, canonical + display, lowercased). |
+| `unique_relations` | `int` | Distinct relation type labels (uppercased before dedup). |
+| `records_with_temporal_data` | `int` | Records with both a parseable `timestamp` and `event_date`. |
+| `records_without_temporal_data` | `int` | Records where either field is missing or unparseable. |
+| `earliest_timestamp` | `string \| null` | Earliest `event_date` in `YYYY-MM-DD` format, or `null` if no records. |
+| `latest_timestamp` | `string \| null` | Latest `event_date` in `YYYY-MM-DD` format, or `null` if no records. |
+| `source_breakdown` | `object` | Per-source record counts, e.g. `{"github": 40, "jira": 51, "slack": 51}`. |
+| `average_confidence` | `float \| null` | Mean extraction confidence score (4 decimal places), or `null` if no records. |
+| `records_with_source_url` | `int` | Records carrying a non-null `source_url`. |
+| `generated_at` | `string` | UTC ISO-8601 timestamp of when stats were computed. |
+
+> [!NOTE]
+> `records_with_temporal_data + records_without_temporal_data == total_records` always holds.
+
+### Python Usage
+
+```python
+from pathlib import Path
+from src.retrieval.stats import RetrievalStatsEngine
+
+engine = RetrievalStatsEngine(
+    records_path=Path("data/processed/retrieval_ready_records.json"),
+    stats_path=Path("data/processed/retrieval_quality_stats.json"),
+)
+stats = engine.compute()
+
+print(stats.total_records)            # 142
+print(stats.unique_entities)          # 30
+print(stats.unique_relations)         # 8
+print(stats.records_with_temporal_data)  # 142
+print(stats.earliest_timestamp)       # "2023-03-15"
+print(stats.latest_timestamp)         # "2023-05-30"
+print(stats.average_confidence)       # 0.8311
+print(stats.source_breakdown)         # {'github': 40, 'jira': 51, 'slack': 51}
+```
+
+> [!NOTE]
+> `RetrievalStatsEngine` is read-only. It never modifies any input file.
+> The `stats_path` parameter is optional — omit it to compute stats without
+> writing a file.
+

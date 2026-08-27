@@ -531,6 +531,105 @@ def run_retrieval_prep() -> dict:
     report["validation_warnings"] = val_result.warnings
     return report
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Week 3 – Retrieval Data Quality Statistics (Karkuvel)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def run_retrieval_stats() -> "RetrievalDataQualityStats":
+    """
+    Week 3 – Compute and display retrieval data quality statistics.
+
+    Reads: data/processed/retrieval_ready_records.json
+    Writes: data/processed/retrieval_quality_stats.json
+    """
+    from src.retrieval.stats import RetrievalStatsEngine
+    from src.retrieval.models import RetrievalDataQualityStats  # noqa: F401 (for type hint)
+
+    _print_section("Week 3: Retrieval Data Quality Statistics (Karkuvel)")
+
+    if not settings.retrieval_ready_records_path.exists():
+        _print_error(
+            "retrieval_ready_records.json not found. "
+            "Run --prepare-retrieval or --run-week3-data first."
+        )
+        sys.exit(1)
+
+    engine = RetrievalStatsEngine(
+        records_path=settings.retrieval_ready_records_path,
+        stats_path=settings.retrieval_quality_stats_path,
+    )
+    stats = engine.compute()
+
+    # ── Print statistics ─────────────────────────────────────────────────
+    if _RICH:
+        from rich.table import Table
+
+        t = Table(
+            show_header=True,
+            header_style="bold magenta",
+            title="Retrieval Data Quality Statistics",
+        )
+        t.add_column("Metric", style="cyan", min_width=35)
+        t.add_column("Value", justify="right")
+        t.add_row("Total records",                  str(stats.total_records))
+        t.add_row("Unique entities",                str(stats.unique_entities))
+        t.add_row("Unique relation types",          str(stats.unique_relations))
+        t.add_row("Records with temporal data",     str(stats.records_with_temporal_data))
+        t.add_row("Records without temporal data",  str(stats.records_without_temporal_data))
+        t.add_row(
+            "Earliest event date",
+            stats.earliest_timestamp if stats.earliest_timestamp else "N/A",
+        )
+        t.add_row(
+            "Latest event date",
+            stats.latest_timestamp if stats.latest_timestamp else "N/A",
+        )
+        avg_conf = (
+            f"{stats.average_confidence:.4f}"
+            if stats.average_confidence is not None
+            else "N/A"
+        )
+        t.add_row("Average confidence score",       avg_conf)
+        t.add_row("Records with source_url",        str(stats.records_with_source_url))
+        console.print(t)
+
+        t_src = Table(
+            show_header=True,
+            header_style="bold magenta",
+            title="Source Breakdown",
+        )
+        t_src.add_column("Source", style="cyan", min_width=10)
+        t_src.add_column("Records", justify="right")
+        for src, count in sorted(stats.source_breakdown.items()):
+            t_src.add_row(src.capitalize(), str(count))
+        console.print(t_src)
+    else:
+        print("\nRetrieval Data Quality Statistics")
+        print(f"  Total records                 : {stats.total_records}")
+        print(f"  Unique entities               : {stats.unique_entities}")
+        print(f"  Unique relation types         : {stats.unique_relations}")
+        print(f"  Records with temporal data    : {stats.records_with_temporal_data}")
+        print(f"  Records without temporal data : {stats.records_without_temporal_data}")
+        print(f"  Earliest event date           : {stats.earliest_timestamp or 'N/A'}")
+        print(f"  Latest event date             : {stats.latest_timestamp or 'N/A'}")
+        avg_conf = (
+            f"{stats.average_confidence:.4f}"
+            if stats.average_confidence is not None
+            else "N/A"
+        )
+        print(f"  Average confidence score      : {avg_conf}")
+        print(f"  Records with source_url       : {stats.records_with_source_url}")
+        print("\n  Source Breakdown")
+        for src, count in sorted(stats.source_breakdown.items()):
+            print(f"    {src.capitalize():<10} : {count}")
+
+    _print_info(
+        f"retrieval_quality_stats.json -> {settings.retrieval_quality_stats_path}"
+    )
+    return stats
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────────────────────────
@@ -556,6 +655,7 @@ Week 2 examples (Karkuvel – Graph-Ready Data Pipeline):
 
 Week 3 examples (Karkuvel – Temporal Retrieval Preparation):
   python main.py --prepare-retrieval            Build retrieval-ready records from graph_ready_triples.json
+  python main.py --retrieval-stats              Compute data quality statistics from retrieval_ready_records.json
   python main.py --run-week3-data               Full pipeline: ingest -> extract -> graph prep -> retrieval prep
 
 LLM modes (set in .env or environment):
@@ -600,6 +700,11 @@ LLM modes (set in .env or environment):
         "--run-week3-data",
         action="store_true",
         help="Week 3: Full pipeline — ingest -> extract -> graph prep -> retrieval prep",
+    )
+    group.add_argument(
+        "--retrieval-stats",
+        action="store_true",
+        help="Week 3: Compute data quality statistics from retrieval_ready_records.json",
     )
 
     args = parser.parse_args()
@@ -662,6 +767,10 @@ LLM modes (set in .env or environment):
         _print_info(f"graph_prep_summary.json        -> {settings.graph_prep_summary_path}")
         _print_info(f"retrieval_ready_records.json   -> {settings.retrieval_ready_records_path}")
         _print_info(f"retrieval_prep_summary.json    -> {settings.retrieval_prep_summary_path}")
+
+    elif args.retrieval_stats:
+        run_retrieval_stats()
+        _print_section("Week 3 Retrieval Statistics Complete")
 
 
 if __name__ == "__main__":
