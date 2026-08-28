@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-27T17:53:10.045672+00:00",
+  "generated_at": "2026-08-28T13:46:36.169033+00:00",
   "pipeline_stage": "Week 2 – Graph Preparation (Karkuvel)",
   "input_file": "data\\processed\\extracted_triples.json",
   "output_file": "data\\processed\\graph_ready_triples.json",

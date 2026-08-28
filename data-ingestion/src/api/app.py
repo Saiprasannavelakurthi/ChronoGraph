@@ -1,23 +1,25 @@
 """
 src/api/app.py
 ──────────────
-FastAPI application for ChronoGraph Week 1.
+FastAPI application for ChronoGraph.
 
-Provides a lightweight REST interface for triggering and inspecting the
-ingestion and extraction pipelines.  This is optional for Week 1 but is
-included to make the pipeline composable and testable over HTTP.
+Provides REST interfaces for data ingestion, triple extraction, graph-ready
+preparation, and Week 4 temporal retrieval query functionality.
 
 Endpoints
 ─────────
-GET  /api/v1/health         → liveness probe
-POST /api/v1/ingest         → run the data ingestion pipeline
-POST /api/v1/extract        → run the triple extraction pipeline
-GET  /api/v1/triples        → read extracted_triples.json
+Week 4 Primary Retrieval Endpoints:
+  GET  /api/health            → service & retrieval data availability probe
+  POST /api/retrieval/query   → temporal evidence retrieval query
+  GET  /api/retrieval/stats   → retrieval data quality statistics
 
-NOT implemented (Week 2+):
-  - Neo4j graph endpoints
-  - GraphRAG query endpoints
-  - Temporal retrieval endpoints
+Pipeline Endpoints:
+  GET  /api/v1/health         → legacy liveness probe
+  POST /api/v1/ingest         → run the data ingestion pipeline
+  POST /api/v1/extract        → run the triple extraction pipeline
+  GET  /api/v1/triples        → read extracted_triples.json
+  GET  /api/v1/graph-ready    → read graph_ready_triples.json
+  POST /api/v1/prepare-graph  → run the graph preparation pipeline
 """
 
 from __future__ import annotations
@@ -25,18 +27,32 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from config.settings import settings
 from src.extraction.extractor import TemporalTripleExtractor
 from src.ingestion.pipeline import IngestionPipeline
+from src.retrieval.models import (
+    RetrievalHealthResponse,
+    RetrievalQueryRequest,
+    RetrievalQueryResponse,
+)
+from src.retrieval.service import (
+    RetrievalDataCorruptedError,
+    RetrievalDataNotFoundError,
+    RetrievalService,
+    RetrievalServiceError,
+)
 from src.schemas.graph import Triple
 
 logger = logging.getLogger(__name__)
+
+# Global retrieval service instance
+retrieval_service = RetrievalService()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # App setup
@@ -45,13 +61,14 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="ChronoGraph API",
     description=(
-        "Week 1 REST interface for the ChronoGraph Temporal GraphRAG pipeline. "
-        "Provides data ingestion, triple extraction, and result inspection endpoints."
+        "REST interface for the ChronoGraph Temporal GraphRAG pipeline. "
+        "Provides data ingestion, triple extraction, graph preparation, and temporal retrieval queries."
     ),
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -396,4 +413,95 @@ async def prepare_graph() -> Dict[str, Any]:
     except Exception as exc:
         logger.error("prepare-graph endpoint error: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Week 4 Primary Endpoints — Temporal Retrieval Query API
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@app.get(
+    "/api/health",
+    response_model=RetrievalHealthResponse,
+    tags=["System"],
+    summary="Service & retrieval data health check",
+)
+async def api_health() -> RetrievalHealthResponse:
+    """
+    Return API service health status, retrieval data availability on disk,
+    and total loaded record count.
+    """
+    return retrieval_service.get_health()
+
+
+@app.post(
+    "/api/retrieval/query",
+    response_model=RetrievalQueryResponse,
+    tags=["Retrieval"],
+    summary="Query temporal retrieval records",
+)
+async def query_retrieval(request: RetrievalQueryRequest) -> RetrievalQueryResponse:
+    """
+    Execute a structured temporal retrieval query against retrieval-ready evidence records.
+
+    Features:
+      - Validates query schema via FastAPI & Pydantic
+      - Entity hint filtering (subject / object match)
+      - Relation label filtering
+      - Source system filtering ('slack', 'github', 'jira')
+      - Temporal filtering (exact date, date range, before date, after date)
+      - Chronological sorting (ASC / DESC)
+      - Result limit and total match count prior to limit
+      - Complete evidence provenance preservation
+    """
+    try:
+        return retrieval_service.query(request)
+    except RetrievalDataNotFoundError as exc:
+        logger.warning("Retrieval query failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except RetrievalDataCorruptedError as exc:
+        logger.error("Corrupted retrieval data encountered during query: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Retrieval data file is corrupted or cannot be parsed.",
+        ) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Unexpected error in /api/retrieval/query: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while processing retrieval query.",
+        ) from exc
+
+
+@app.get(
+    "/api/retrieval/stats",
+    tags=["Retrieval"],
+    summary="Get retrieval data quality statistics",
+)
+async def get_retrieval_stats() -> Dict[str, Any]:
+    """
+    Expose Week 3 retrieval data quality and coverage statistics.
+
+    Reads retrieval_quality_stats.json or computes statistics on-demand.
+    """
+    try:
+        return retrieval_service.get_stats()
+    except RetrievalDataNotFoundError as exc:
+        logger.warning("Retrieval stats unavailable: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        logger.error("Unexpected error in /api/retrieval/stats: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while retrieving data statistics.",
+        ) from exc
+
 

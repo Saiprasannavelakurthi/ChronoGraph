@@ -253,12 +253,14 @@ def validate_dag() -> None:
 
 def start_api() -> None:
     """Start the FastAPI server."""
-    _print_section("Starting FastAPI Server")
+    _print_section("Starting FastAPI Server (Week 4 Temporal Retrieval API)")
     try:
         import uvicorn
-        _print_info(f"Server: http://{settings.api_host}:{settings.api_port}")
-        _print_info("Docs:   http://localhost:8000/docs")
-        _print_info("Health: http://localhost:8000/api/v1/health")
+        _print_info(f"Server:     http://{settings.api_host}:{settings.api_port}")
+        _print_info("Docs:       http://localhost:8000/docs")
+        _print_info("Health:     http://localhost:8000/api/health")
+        _print_info("Query API:  http://localhost:8000/api/retrieval/query")
+        _print_info("Stats API:  http://localhost:8000/api/retrieval/stats")
         uvicorn.run(
             "src.api.app:app",
             host=settings.api_host,
@@ -673,6 +675,7 @@ LLM modes (set in .env or environment):
     group.add_argument("--run-all", action="store_true", help="Run full ingestion + extraction pipeline")
     group.add_argument("--export-json", action="store_true", help="Print extracted_triples.json to stdout")
     group.add_argument("--start-api", action="store_true", help="Start FastAPI REST server")
+    group.add_argument("--serve-api", action="store_true", help="Alias for --start-api (Start FastAPI REST server)")
     group.add_argument("--validate-dag", action="store_true", help="Validate Airflow DAG import")
     # ── Week 2 commands (Karkuvel) ────────────────────────────────────────────
     group.add_argument(
@@ -729,7 +732,7 @@ LLM modes (set in .env or environment):
     elif args.export_json:
         export_json()
 
-    elif args.start_api:
+    elif args.start_api or args.serve_api:
         start_api()
 
     elif args.validate_dag:

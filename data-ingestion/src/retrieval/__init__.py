@@ -20,25 +20,42 @@ downstream Temporal Routing / GraphRAG engine can perform chronological retrieva
 from src.retrieval.models import (
     PipelineExecutionMetadata,
     RetrievalDataQualityStats,
+    RetrievalHealthResponse,
+    RetrievalQueryRequest,
+    RetrievalQueryResponse,
     RetrievalRecord,
     RetrievalRequest,
     TemporalFilter,
 )
 from src.retrieval.builder import RetrievalRecordBuilder
 from src.retrieval.filter import TemporalFilterEngine
+from src.retrieval.service import (
+    RetrievalDataCorruptedError,
+    RetrievalDataNotFoundError,
+    RetrievalService,
+    RetrievalServiceError,
+)
 from src.retrieval.validator import RetrievalOutputValidator, ValidationResult
 from src.retrieval.stats import RetrievalStatsEngine
 
 __all__ = [
     "PipelineExecutionMetadata",
     "RetrievalDataQualityStats",
+    "RetrievalHealthResponse",
+    "RetrievalQueryRequest",
+    "RetrievalQueryResponse",
     "RetrievalRecord",
     "RetrievalRequest",
     "TemporalFilter",
     "RetrievalRecordBuilder",
     "TemporalFilterEngine",
+    "RetrievalService",
+    "RetrievalServiceError",
+    "RetrievalDataNotFoundError",
+    "RetrievalDataCorruptedError",
     "RetrievalOutputValidator",
     "ValidationResult",
     "RetrievalStatsEngine",
 ]
+
 
