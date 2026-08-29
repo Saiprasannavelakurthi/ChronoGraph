@@ -183,18 +183,26 @@ class RetrievalService:
         # Step 2: Normalize request
         retrieval_req: RetrievalRequest
         query_echo: Optional[str] = None
+        page: int = 1
+        page_size: int = 20
 
         if isinstance(request, RetrievalQueryRequest):
             query_echo = request.query or request.query_text
             retrieval_req = request.to_retrieval_request()
+            page = request.page
+            page_size = request.page_size or request.limit
         elif isinstance(request, RetrievalRequest):
             query_echo = request.query_text
             retrieval_req = request
+            page = 1
+            page_size = request.limit
         elif isinstance(request, dict):
             # Parse via RetrievalQueryRequest for unified API schema support
             parsed = RetrievalQueryRequest(**request)
             query_echo = parsed.query or parsed.query_text
             retrieval_req = parsed.to_retrieval_request()
+            page = parsed.page
+            page_size = parsed.page_size or parsed.limit
         else:
             raise ValueError(f"Unsupported request type: {type(request).__name__}")
 
@@ -206,9 +214,19 @@ class RetrievalService:
 
         total_matches = len(all_filtered)
 
-        # Step 4: Apply final limit
-        final_results = all_filtered[: retrieval_req.limit]
-        returned_count = len(final_results)
+        # Step 4: Apply 1-based pagination
+        if total_matches == 0:
+            total_pages = 0
+        else:
+            total_pages = (total_matches + page_size - 1) // page_size
+
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        page_results = all_filtered[start_idx:end_idx] if start_idx < total_matches else []
+        returned_count = len(page_results)
+
+        has_next = page < total_pages
+        has_previous = page > 1 and total_pages > 0
 
         # Step 5: Construct applied filters summary
         applied_filters = {
@@ -220,20 +238,29 @@ class RetrievalService:
             "temporal_filter": retrieval_req.temporal_filter.to_dict(),
             "sort_order": retrieval_req.sort_order.value,
             "limit": retrieval_req.limit,
+            "page": page,
+            "page_size": page_size,
         }
 
         logger.info(
-            "RetrievalService.query completed: %d total matches, %d returned (limit=%d)",
+            "RetrievalService.query completed: %d total matches, %d returned (page=%d, page_size=%d, total_pages=%d)",
             total_matches,
             returned_count,
-            retrieval_req.limit,
+            page,
+            page_size,
+            total_pages,
         )
 
         return RetrievalQueryResponse(
             query=query_echo,
             total_matches=total_matches,
             returned_count=returned_count,
-            results=final_results,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+            has_next=has_next,
+            has_previous=has_previous,
+            results=page_results,
             applied_filters=applied_filters,
         )
 

@@ -565,3 +565,179 @@ class TestApiRetrievalStatsEndpoint:
         ):
             response = client.get("/api/retrieval/stats")
             assert response.status_code == 404
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. Retrieval API Pagination & Performance Tests (Week 4 Day 2)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestApiPagination:
+    def test_first_page(self) -> None:
+        response = client.post("/api/retrieval/query", json={"page": 1, "page_size": 5})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["page"] == 1
+        assert data["page_size"] == 5
+        assert data["returned_count"] == 5
+        assert len(data["results"]) == 5
+        assert data["has_next"] is True
+        assert data["has_previous"] is False
+
+    def test_second_page(self) -> None:
+        p1 = client.post("/api/retrieval/query", json={"page": 1, "page_size": 5}).json()
+        p2 = client.post("/api/retrieval/query", json={"page": 2, "page_size": 5}).json()
+        assert p2["page"] == 2
+        assert p2["page_size"] == 5
+        assert p2["returned_count"] == 5
+        assert p2["has_next"] is True
+        assert p2["has_previous"] is True
+        # Page 2 results must be distinct from Page 1
+        p1_ids = [r["record_id"] for r in p1["results"]]
+        p2_ids = [r["record_id"] for r in p2["results"]]
+        assert set(p1_ids).isdisjoint(set(p2_ids))
+
+    def test_last_page(self) -> None:
+        resp_all = client.post("/api/retrieval/query", json={"page": 1, "page_size": 100}).json()
+        total_pages = resp_all["total_pages"]
+        response = client.post("/api/retrieval/query", json={"page": total_pages, "page_size": 100})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["page"] == total_pages
+        assert data["has_next"] is False
+        assert data["has_previous"] is True
+        assert data["returned_count"] > 0
+
+    def test_page_beyond_available_results(self) -> None:
+        response = client.post("/api/retrieval/query", json={"page": 9999, "page_size": 10})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["page"] == 9999
+        assert data["returned_count"] == 0
+        assert data["results"] == []
+        assert data["has_next"] is False
+        assert data["has_previous"] is True
+
+    def test_page_size_behavior(self) -> None:
+        response = client.post("/api/retrieval/query", json={"page": 1, "page_size": 3})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["page_size"] == 3
+        assert data["returned_count"] == 3
+        assert len(data["results"]) == 3
+
+    def test_total_pages_calculation(self) -> None:
+        response = client.post("/api/retrieval/query", json={"page_size": 10})
+        assert response.status_code == 200
+        data = response.json()
+        total_matches = data["total_matches"]
+        expected_total_pages = (total_matches + 9) // 10
+        assert data["total_pages"] == expected_total_pages
+
+    def test_has_next_and_has_previous_flags(self) -> None:
+        # Page 1 of multi-page
+        p1 = client.post("/api/retrieval/query", json={"page": 1, "page_size": 10}).json()
+        assert p1["has_next"] is True
+        assert p1["has_previous"] is False
+
+        # Middle page
+        p2 = client.post("/api/retrieval/query", json={"page": 2, "page_size": 10}).json()
+        assert p2["has_next"] is True
+        assert p2["has_previous"] is True
+
+    def test_page_zero_rejection_422(self) -> None:
+        response = client.post("/api/retrieval/query", json={"page": 0})
+        assert response.status_code == 422
+
+    def test_negative_page_rejection_422(self) -> None:
+        response = client.post("/api/retrieval/query", json={"page": -5})
+        assert response.status_code == 422
+
+    def test_page_size_zero_rejection_422(self) -> None:
+        response = client.post("/api/retrieval/query", json={"page_size": 0})
+        assert response.status_code == 422
+
+    def test_excessive_page_size_rejection_422(self) -> None:
+        response = client.post("/api/retrieval/query", json={"page_size": 101})
+        assert response.status_code == 422
+
+    def test_filtering_and_pagination_together(self) -> None:
+        payload = {
+            "sources": ["slack"],
+            "page": 2,
+            "page_size": 10,
+        }
+        response = client.post("/api/retrieval/query", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] == 51
+        assert data["page"] == 2
+        assert data["page_size"] == 10
+        assert data["returned_count"] == 10
+        for r in data["results"]:
+            assert r["source"] == "slack"
+
+    def test_sorting_and_pagination_together(self) -> None:
+        p1 = client.post("/api/retrieval/query", json={"sort_order": "desc", "page": 1, "page_size": 5}).json()
+        p2 = client.post("/api/retrieval/query", json={"sort_order": "desc", "page": 2, "page_size": 5}).json()
+
+        d1 = [r["event_date"] for r in p1["results"]]
+        d2 = [r["event_date"] for r in p2["results"]]
+        assert d1 == sorted(d1, reverse=True)
+        assert d2 == sorted(d2, reverse=True)
+        assert min(d1) >= max(d2)
+
+    def test_backward_compatibility_limit_only(self) -> None:
+        # Existing Day 1 limit-only request must return first N records seamlessly
+        payload = {
+            "entity_hints": ["gcp"],
+            "limit": 5,
+        }
+        response = client.post("/api/retrieval/query", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["page"] == 1
+        assert data["page_size"] == 5
+        assert data["returned_count"] == min(5, data["total_matches"])
+        assert len(data["results"]) == data["returned_count"]
+
+    def test_empty_results_pagination(self) -> None:
+        payload = {
+            "entity_hints": ["non_existent_entity_xyz_999"],
+            "page": 1,
+            "page_size": 10,
+        }
+        response = client.post("/api/retrieval/query", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] == 0
+        assert data["returned_count"] == 0
+        assert data["total_pages"] == 0
+        assert data["has_next"] is False
+        assert data["has_previous"] is False
+        assert data["results"] == []
+
+    def test_direct_retrieval_service_pagination(self, temp_records_file: Path) -> None:
+        service = RetrievalService(records_path=temp_records_file)
+        req = RetrievalQueryRequest(page=2, page_size=1)
+        resp = service.query(req)
+        assert resp.total_matches == 3
+        assert resp.total_pages == 3
+        assert resp.page == 2
+        assert resp.page_size == 1
+        assert resp.returned_count == 1
+        assert resp.has_next is True
+        assert resp.has_previous is True
+
+    def test_cached_retrieval_data_reused(self, temp_records_file: Path) -> None:
+        service = RetrievalService(records_path=temp_records_file)
+        res1 = service.query(RetrievalQueryRequest(query="test"))
+        assert service._cached_records is not None
+        assert len(service._cached_records) == 3
+
+        # Patch builtins.open to verify disk is not re-read on subsequent queries
+        with patch("builtins.open", side_effect=RuntimeError("Disk should not be read when cached")):
+            res2 = service.query(RetrievalQueryRequest(query="test"))
+            assert res2.total_matches == res1.total_matches
+            assert res2.returned_count == res1.returned_count
+

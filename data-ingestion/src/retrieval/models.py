@@ -586,17 +586,37 @@ class RetrievalQueryRequest(BaseModel):
         default=20,
         ge=1,
         le=1000,
-        description="Maximum number of retrieval records to return (1-1000).",
+        description="Maximum number of retrieval records to return (1-1000). Backward compatibility alias.",
+    )
+    page: int = Field(
+        default=1,
+        ge=1,
+        description="Page number for pagination (1-indexed, default=1).",
+    )
+    page_size: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=100,
+        description="Number of records per page (1-100). If omitted, defaults to limit (or 20).",
     )
 
     @model_validator(mode="after")
-    def validate_date_consistency(self) -> "RetrievalQueryRequest":
-        """Validate range bounds consistency."""
+    def validate_date_and_pagination(self) -> "RetrievalQueryRequest":
+        """Validate date range consistency and resolve page_size/limit synchronization."""
         if self.start_date and self.end_date:
             if self.start_date > self.end_date:
                 raise ValueError(
                     f"start_date ({self.start_date}) must not be after end_date ({self.end_date})."
                 )
+
+        # Synchronize page_size and limit for clean pagination and backward compatibility:
+        if self.page_size is None:
+            # page_size omitted -> fallback to limit (capped at 100)
+            self.page_size = min(self.limit, 100)
+        else:
+            # page_size explicitly provided -> sync limit to page_size
+            self.limit = self.page_size
+
         return self
 
     @field_validator("sources")
@@ -664,7 +684,30 @@ class RetrievalQueryResponse(BaseModel):
     )
     returned_count: int = Field(
         ge=0,
-        description="Number of records returned in this response (<= limit).",
+        description="Number of records returned in this response (<= page_size).",
+    )
+    page: int = Field(
+        default=1,
+        ge=1,
+        description="Current 1-based page number.",
+    )
+    page_size: int = Field(
+        default=20,
+        ge=1,
+        description="Requested number of records per page.",
+    )
+    total_pages: int = Field(
+        default=0,
+        ge=0,
+        description="Total number of pages available.",
+    )
+    has_next: bool = Field(
+        default=False,
+        description="True if a subsequent page of results exists.",
+    )
+    has_previous: bool = Field(
+        default=False,
+        description="True if a previous page of results exists.",
     )
     results: List[RetrievalRecord] = Field(
         default_factory=list,
@@ -685,6 +728,11 @@ class RetrievalQueryResponse(BaseModel):
             "query": self.query,
             "total_matches": self.total_matches,
             "returned_count": self.returned_count,
+            "page": self.page,
+            "page_size": self.page_size,
+            "total_pages": self.total_pages,
+            "has_next": self.has_next,
+            "has_previous": self.has_previous,
             "results": [r.to_dict() for r in self.results],
             "applied_filters": self.applied_filters,
             "generated_at": self.generated_at,

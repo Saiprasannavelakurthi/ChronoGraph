@@ -100,9 +100,11 @@ Executes multi-criteria temporal retrieval.
 | `before_date` | `string (YYYY-MM-DD)` | No | `null` | Return only events strictly before this date (`< before_date`). |
 | `after_date` | `string (YYYY-MM-DD)` | No | `null` | Return only events strictly after this date (`> after_date`). |
 | `sort_order` | `string ("asc" \| "desc")` | No | `"asc"` | Chronological sort direction (`"asc"` = earliest first, `"desc"` = latest first). |
-| `limit` | `integer (1 - 1000)` | No | `20` | Maximum number of records to return. |
+| `limit` | `integer (1 - 1000)` | No | `20` | Maximum number of records to return (backward compatibility alias). |
+| `page` | `integer (>= 1)` | No | `1` | 1-based page number for pagination. |
+| `page_size` | `integer (1 - 100)` | No | `20` | Number of items per page. Defaults to `limit` (or 20). |
 
-#### Example Request
+#### Example Request (Paginated)
 
 ```json
 {
@@ -112,7 +114,8 @@ Executes multi-criteria temporal retrieval.
   "sources": ["slack", "github"],
   "after_date": "2023-04-01",
   "sort_order": "asc",
-  "limit": 5
+  "page": 2,
+  "page_size": 5
 }
 ```
 
@@ -123,6 +126,11 @@ Executes multi-criteria temporal retrieval.
   "query": "What decisions were made regarding GCP after April 2023?",
   "total_matches": 12,
   "returned_count": 5,
+  "page": 2,
+  "page_size": 5,
+  "total_pages": 3,
+  "has_next": true,
+  "has_previous": true,
   "results": [
     {
       "record_id": "779f3f63-0287-40b1-a5ca-82d74c784851",
@@ -162,7 +170,9 @@ Executes multi-criteria temporal retrieval.
       "after_date": "2023-04-01"
     },
     "sort_order": "asc",
-    "limit": 5
+    "limit": 5,
+    "page": 2,
+    "page_size": 5
   },
   "generated_at": "2026-08-28T13:45:00.000000+00:00"
 }

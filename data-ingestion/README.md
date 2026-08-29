@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![LlamaIndex](https://img.shields.io/badge/LlamaIndex-0.10%2B-purple.svg)](https://www.llamaindex.ai/)
 [![Groq LLM](https://img.shields.io/badge/Groq-llama--3.1--8b--instant-orange.svg)](https://groq.com/)
-[![Tests](https://img.shields.io/badge/tests-457%20passed-brightgreen.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/tests-474%20passed-brightgreen.svg)](https://docs.pytest.org/)
 
 **ChronoGraph** is a Temporal GraphRAG pipeline engineered for enterprise forensics, knowledge graph extraction, and cross-platform communication analytics. It ingests unstructured developer communications (Slack messages, GitHub PRs/issues, Jira tickets), extracts temporal entity-relationship triples using LlamaIndex & Groq LLMs (with robust heuristic fallbacks), validates and normalizes entities/relations, deduplicates records, prepares citation-ready chronological retrieval evidence records, and exposes a high-performance REST Retrieval Query API for downstream Temporal Routing and GraphRAG answer generation.
 
@@ -503,7 +503,8 @@ curl -X POST http://localhost:8000/api/retrieval/query \
     "entity_hints": ["AWS"],
     "after_date": "2023-04-01",
     "sort_order": "asc",
-    "limit": 5
+    "page": 1,
+    "page_size": 5
   }'
 ```
 
@@ -513,6 +514,11 @@ curl -X POST http://localhost:8000/api/retrieval/query \
   "query": "What happened with AWS after April 2023?",
   "total_matches": 18,
   "returned_count": 5,
+  "page": 1,
+  "page_size": 5,
+  "total_pages": 4,
+  "has_next": true,
+  "has_previous": false,
   "results": [
     {
       "record_id": "96c09dfd-b4b6-455b-9d41-3b7c9366df04",
@@ -550,7 +556,9 @@ curl -X POST http://localhost:8000/api/retrieval/query \
       "after_date": "2023-04-01"
     },
     "sort_order": "asc",
-    "limit": 5
+    "limit": 5,
+    "page": 1,
+    "page_size": 5
   },
   "generated_at": "2026-08-28T13:45:00.000000+00:00"
 }
