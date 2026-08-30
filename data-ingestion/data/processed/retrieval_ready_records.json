@@ -17,6 +17,7 @@
     "evidence": "I strongly believe we should start evaluating a migration to GCP.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -37,6 +38,7 @@
     "evidence": "Our AWS bill hit $84k this month – up 40% YoY.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -57,6 +59,7 @@
     "evidence": "I'd like to propose a phased migration starting with the authentication service.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -77,6 +80,7 @@
     "evidence": "Team, I've been running cost analysis for Q1.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -97,6 +101,7 @@
     "evidence": "Switching to GCS and CloudSQL is not trivial.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -117,6 +122,7 @@
     "evidence": "AWS gives us mature tooling and our team already knows it.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -137,6 +143,7 @@
     "evidence": "Arun, I've heard this argument before.",
     "confidence": 0.75,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -157,6 +164,7 @@
     "evidence": "Arun, I've heard this argument before.",
     "confidence": 0.75,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -177,6 +185,7 @@
     "evidence": "If we're rethinking our Kubernetes strategy anyway, GCP makes a lot of sense.",
     "confidence": 0.75,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -197,6 +206,7 @@
     "evidence": "However, I did a spike on GKE (Google Kubernetes Engine) last week and honestly it outperforms EKS in our latency benchmarks by ~22%.",
     "confidence": 0.75,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -217,6 +227,7 @@
     "evidence": "However, I did a spike on GKE (Google Kubernetes Engine) last week and honestly it outperforms EKS in our latency benchmarks by ~22%.",
     "confidence": 0.75,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -237,6 +248,7 @@
     "evidence": "However, I did a spike on GKE (Google Kubernetes Engine) last week and honestly it outperforms EKS in our latency benchmarks by ~22%.",
     "confidence": 0.75,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -257,6 +269,7 @@
     "evidence": "I want to flag a real concern: our team's GCP expertise is near zero.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -277,6 +290,7 @@
     "evidence": "I want to flag a real concern: our team's GCP expertise is near zero.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -297,6 +311,7 @@
     "evidence": "PostgreSQL with JSONB gives you the flexibility you need without sacrificing ACID compliance.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -317,6 +332,7 @@
     "evidence": "Vikram, I'd argue against MongoDB here.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -337,6 +353,7 @@
     "evidence": "After thinking it over, I agree – PostgreSQL it is for the event store too.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -357,6 +374,7 @@
     "evidence": "Quick update from the arch review: leadership has formally approved the GCP migration.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -377,6 +395,7 @@
     "evidence": "Rohan will lead the Kubernetes migration to GKE.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -397,6 +416,7 @@
     "evidence": "Rohan will lead the Kubernetes migration to GKE.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -417,6 +437,7 @@
     "evidence": "Quick update from the arch review: leadership has formally approved the GCP migration.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -437,6 +458,7 @@
     "evidence": "Phase 1 targets the authentication-service and API gateway.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -457,6 +479,7 @@
     "evidence": "Quick update from the arch review: leadership has formally approved the GCP migration.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -477,6 +500,7 @@
     "evidence": "Quick update from the arch review: leadership has formally approved the GCP migration.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -497,6 +521,7 @@
     "evidence": "I've already raised JIRA ticket CLOUD-101 for the GKE migration tasks.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -517,6 +542,7 @@
     "evidence": "Acknowledged.",
     "confidence": 0.75,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -537,6 +563,7 @@
     "evidence": "This needs immediate patching before the GCP migration kicks off.",
     "confidence": 0.9,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -557,6 +584,7 @@
     "evidence": "URGENT: I've identified a critical security vulnerability in the authentication-service.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -577,6 +605,7 @@
     "evidence": "URGENT: I've identified a critical security vulnerability in the authentication-service.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -597,6 +626,7 @@
     "evidence": "URGENT: I've identified a critical security vulnerability in the authentication-service.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -617,6 +647,7 @@
     "evidence": "URGENT: I've identified a critical security vulnerability in the authentication-service.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -637,6 +668,7 @@
     "evidence": "URGENT: I've identified a critical security vulnerability in the authentication-service.",
     "confidence": 0.9,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -657,6 +689,7 @@
     "evidence": "Divya, thanks for flagging this.",
     "confidence": 0.75,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -677,6 +710,7 @@
     "evidence": "It implements a distributed lock using Redis to prevent the race condition.",
     "confidence": 0.9,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -697,6 +731,7 @@
     "evidence": "On it.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -717,6 +752,7 @@
     "evidence": "The authentication-service Docker image has been rebuilt for GCP Artifact Registry.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -737,6 +773,7 @@
     "evidence": "We've completed the initial GKE cluster setup in us-central1.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -757,6 +794,7 @@
     "evidence": "Latency is looking good – p99 is 45ms vs 68ms on EKS.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -777,6 +815,7 @@
     "evidence": "The authentication-service Docker image has been rebuilt for GCP Artifact Registry.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -797,6 +836,7 @@
     "evidence": "We've completed the initial GKE cluster setup in us-central1.",
     "confidence": 0.75,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -817,6 +857,7 @@
     "evidence": "I'm implementing GCP Cloud SQL for the auth service database today.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -837,6 +878,7 @@
     "evidence": "That validates the GKE decision.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -857,6 +899,7 @@
     "evidence": "Rohan, impressive numbers!",
     "confidence": 0.75,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -877,6 +920,7 @@
     "evidence": "Rohan, impressive numbers!",
     "confidence": 0.75,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -897,6 +941,7 @@
     "evidence": "Phase 1 GCP migration is officially COMPLETE as of today for the authentication-service and API gateway.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -917,6 +962,7 @@
     "evidence": "Our AWS costs for those services drop to zero from June 1.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -937,6 +983,7 @@
     "evidence": "Phase 1 GCP migration is officially COMPLETE as of today for the authentication-service and API gateway.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -957,6 +1004,7 @@
     "evidence": "Phase 1 GCP migration is officially COMPLETE as of today for the authentication-service and API gateway.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -977,6 +1025,7 @@
     "evidence": "Phase 1 GCP migration is officially COMPLETE as of today for the authentication-service and API gateway.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -997,6 +1046,7 @@
     "evidence": "Phase 1 GCP migration is officially COMPLETE as of today for the authentication-service and API gateway.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1017,6 +1067,7 @@
     "evidence": "Phase 1 GCP migration is officially COMPLETE as of today for the authentication-service and API gateway.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1037,6 +1088,7 @@
     "evidence": "Replaces with boto3 v2 compatible adapter layer to prepare for eventual GCP migration.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1057,6 +1109,7 @@
     "evidence": "[PR #78] feat: Deprecate AWS SDK v1 – replace with boto3 v2 adapter This PR removes all AWS SDK v1 usage from the authentication-service and api-gateway.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1077,6 +1130,7 @@
     "evidence": "[PR #78] feat: Deprecate AWS SDK v1 – replace with boto3 v2 adapter This PR removes all AWS SDK v1 usage from the authentication-service and api-gateway.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1097,6 +1151,7 @@
     "evidence": "[PR #78] feat: Deprecate AWS SDK v1 – replace with boto3 v2 adapter This PR removes all AWS SDK v1 usage from the authentication-service and api-gateway.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1117,6 +1172,7 @@
     "evidence": "[PR #78] feat: Deprecate AWS SDK v1 – replace with boto3 v2 adapter This PR removes all AWS SDK v1 usage from the authentication-service and api-gateway.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1137,6 +1193,7 @@
     "evidence": "[PR #78] feat: Deprecate AWS SDK v1 – replace with boto3 v2 adapter This PR removes all AWS SDK v1 usage from the authentication-service and api-gateway.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1157,6 +1214,7 @@
     "evidence": "chore: remove deprecated AWS SDK v1 imports from auth-service",
     "confidence": 0.83,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1177,6 +1235,7 @@
     "evidence": "chore: remove deprecated AWS SDK v1 imports from auth-service",
     "confidence": 0.78,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1197,6 +1256,7 @@
     "evidence": "feat: implement boto3 v2 adapter for S3 operations in auth-service",
     "confidence": 0.75,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1217,6 +1277,7 @@
     "evidence": "feat: implement boto3 v2 adapter for S3 operations in auth-service",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1237,6 +1298,7 @@
     "evidence": "feat: implement boto3 v2 adapter for S3 operations in auth-service",
     "confidence": 0.75,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1257,6 +1319,7 @@
     "evidence": "The adapter pattern here is solid – it will make the eventual GCP migration much cleaner since we can swap boto3 calls for GCS equivalents.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1277,6 +1340,7 @@
     "evidence": "The adapter pattern here is solid – it will make the eventual GCP migration much cleaner since we can swap boto3 calls for GCS equivalents.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1297,6 +1361,7 @@
     "evidence": "The adapter pattern here is solid – it will make the eventual GCP migration much cleaner since we can swap boto3 calls for GCS equivalents.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1317,6 +1382,7 @@
     "evidence": "Good work Vikram.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1337,6 +1403,7 @@
     "evidence": "This is exactly the abstraction we need for the GCP migration.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1357,6 +1424,7 @@
     "evidence": "The boto3 v2 adapter decouples our code from AWS-specific APIs nicely.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1377,6 +1445,7 @@
     "evidence": "The boto3 v2 adapter decouples our code from AWS-specific APIs nicely.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1397,6 +1466,7 @@
     "evidence": "Approved.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1417,6 +1487,7 @@
     "evidence": "[PR #82] fix: JWT race condition in token rotation – use Redis distributed lock Critical security fix for SEC-055.",
     "confidence": 0.9,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1437,6 +1508,7 @@
     "evidence": "[PR #82] fix: JWT race condition in token rotation – use Redis distributed lock Critical security fix for SEC-055.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1457,6 +1529,7 @@
     "evidence": "[PR #82] fix: JWT race condition in token rotation – use Redis distributed lock Critical security fix for SEC-055.",
     "confidence": 0.9,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1477,6 +1550,7 @@
     "evidence": "fix(auth): implement Redlock distributed lock for JWT secret rotation",
     "confidence": 0.75,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1497,6 +1571,7 @@
     "evidence": "Excellent fix Vikram.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1517,6 +1592,7 @@
     "evidence": "One note: ensure Redis connection pool is sized correctly for GKE pod autoscaling.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1537,6 +1613,7 @@
     "evidence": "Redis dependency is already in our stack.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1557,6 +1634,7 @@
     "evidence": "[PR #89] feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service Phase 1 GCP migration: replaces all AWS S3 usage in authentication-service with Google Cloud Storage (GCS).",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1577,6 +1655,7 @@
     "evidence": "[PR #89] feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service Phase 1 GCP migration: replaces all AWS S3 usage in authentication-service with Google Cloud Storage (GCS).",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1597,6 +1676,7 @@
     "evidence": "[PR #89] feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service Phase 1 GCP migration: replaces all AWS S3 usage in authentication-service with Google Cloud Storage (GCS).",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1617,6 +1697,7 @@
     "evidence": "[PR #89] feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service Phase 1 GCP migration: replaces all AWS S3 usage in authentication-service with Google Cloud Storage (GCS).",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1637,6 +1718,7 @@
     "evidence": "Removes boto3 dependency from auth-service module.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1657,6 +1739,7 @@
     "evidence": "[PR #89] feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service Phase 1 GCP migration: replaces all AWS S3 usage in authentication-service with Google Cloud Storage (GCS).",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1677,6 +1760,7 @@
     "evidence": "[PR #89] feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service Phase 1 GCP migration: replaces all AWS S3 usage in authentication-service with Google Cloud Storage (GCS).",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1697,6 +1781,7 @@
     "evidence": "[PR #89] feat: Introduce GCP SDK (google-cloud-storage) – replace AWS S3 in auth-service Phase 1 GCP migration: replaces all AWS S3 usage in authentication-service with Google Cloud Storage (GCS).",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1717,6 +1802,7 @@
     "evidence": "chore(auth): remove boto3 dependency, add google-cloud-storage>=2.10.0",
     "confidence": 0.83,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1737,6 +1823,7 @@
     "evidence": "refactor(auth): migrate session artifact storage from S3 to GCS",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1757,6 +1844,7 @@
     "evidence": "refactor(auth): migrate session artifact storage from S3 to GCS",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1777,6 +1865,7 @@
     "evidence": "GCS migration looks clean.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1797,6 +1886,7 @@
     "evidence": "The GCS client wrapper is well-abstracted.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1817,6 +1907,7 @@
     "evidence": "The GCS IAM role setup in the deployment manifests looks correct.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1837,6 +1928,7 @@
     "evidence": "[CLOUD-98] Evaluate GCP vs AWS migration feasibility Conduct a comprehensive feasibility study for migrating our AWS infrastructure to GCP.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1857,6 +1949,7 @@
     "evidence": "[CLOUD-98] Evaluate GCP vs AWS migration feasibility Conduct a comprehensive feasibility study for migrating our AWS infrastructure to GCP.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1877,6 +1970,7 @@
     "evidence": "Deliverable: Architecture Decision Record (ADR-001).",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1897,6 +1991,7 @@
     "evidence": "[CLOUD-98] Evaluate GCP vs AWS migration feasibility Conduct a comprehensive feasibility study for migrating our AWS infrastructure to GCP.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1917,6 +2012,7 @@
     "evidence": "[CLOUD-98] Evaluate GCP vs AWS migration feasibility Conduct a comprehensive feasibility study for migrating our AWS infrastructure to GCP.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1937,6 +2033,7 @@
     "evidence": "The $84k/month AWS bill is accurate and trending upward.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1957,6 +2054,7 @@
     "evidence": "I've reviewed the cost analysis.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1977,6 +2075,7 @@
     "evidence": "Decision: MIGRATE TO GCP.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -1997,6 +2096,7 @@
     "evidence": "ADR-001 published and approved by CTO.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2017,6 +2117,7 @@
     "evidence": "ADR-001 published and approved by CTO.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2037,6 +2138,7 @@
     "evidence": "[CLOUD-101] Phase 1 GCP Migration: GKE cluster provisioning and authentication-service Phase 1 of the GCP migration.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2057,6 +2159,7 @@
     "evidence": "[CLOUD-101] Phase 1 GCP Migration: GKE cluster provisioning and authentication-service Phase 1 of the GCP migration.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2077,6 +2180,7 @@
     "evidence": "Scope: provision GKE cluster in us-central1, migrate authentication-service and API gateway from AWS (EKS + S3 + RDS) to GCP (GKE + GCS + Cloud SQL).",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2097,6 +2201,7 @@
     "evidence": "[CLOUD-101] Phase 1 GCP Migration: GKE cluster provisioning and authentication-service Phase 1 of the GCP migration.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2117,6 +2222,7 @@
     "evidence": "Scope: provision GKE cluster in us-central1, migrate authentication-service and API gateway from AWS (EKS + S3 + RDS) to GCP (GKE + GCS + Cloud SQL).",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2137,6 +2243,7 @@
     "evidence": "Scope: provision GKE cluster in us-central1, migrate authentication-service and API gateway from AWS (EKS + S3 + RDS) to GCP (GKE + GCS + Cloud SQL).",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2157,6 +2264,7 @@
     "evidence": "[CLOUD-101] Phase 1 GCP Migration: GKE cluster provisioning and authentication-service Phase 1 of the GCP migration.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2177,6 +2285,7 @@
     "evidence": "[CLOUD-101] Phase 1 GCP Migration: GKE cluster provisioning and authentication-service Phase 1 of the GCP migration.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2197,6 +2306,7 @@
     "evidence": "[CLOUD-101] Phase 1 GCP Migration: GKE cluster provisioning and authentication-service Phase 1 of the GCP migration.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2217,6 +2327,7 @@
     "evidence": "Scope: provision GKE cluster in us-central1, migrate authentication-service and API gateway from AWS (EKS + S3 + RDS) to GCP (GKE + GCS + Cloud SQL).",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2237,6 +2348,7 @@
     "evidence": "[CLOUD-101] Phase 1 GCP Migration: GKE cluster provisioning and authentication-service Phase 1 of the GCP migration.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2257,6 +2369,7 @@
     "evidence": "[CLOUD-101] Phase 1 GCP Migration: GKE cluster provisioning and authentication-service Phase 1 of the GCP migration.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2277,6 +2390,7 @@
     "evidence": "[CLOUD-101] Phase 1 GCP Migration: GKE cluster provisioning and authentication-service Phase 1 of the GCP migration.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2297,6 +2411,7 @@
     "evidence": "Auth-service and API gateway live on GCP.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2317,6 +2432,7 @@
     "evidence": "AWS resources decommissioned.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2337,6 +2453,7 @@
     "evidence": "Phase 1 migration COMPLETE.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2357,6 +2474,7 @@
     "evidence": "Auth-service and API gateway live on GCP.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2377,6 +2495,7 @@
     "evidence": "Phase 1 migration COMPLETE.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2397,6 +2516,7 @@
     "evidence": "Phase 1 migration COMPLETE.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2417,6 +2537,7 @@
     "evidence": "Must be fixed before GCP production deployment.",
     "confidence": 0.9,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2437,6 +2558,7 @@
     "evidence": "[SEC-055] CRITICAL: JWT token rotation race condition in authentication-service CRITICAL SECURITY BUG: The JWT secret rotation in auth-service has a race condition.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2457,6 +2579,7 @@
     "evidence": "[SEC-055] CRITICAL: JWT token rotation race condition in authentication-service CRITICAL SECURITY BUG: The JWT secret rotation in auth-service has a race condition.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2477,6 +2600,7 @@
     "evidence": "[SEC-055] CRITICAL: JWT token rotation race condition in authentication-service CRITICAL SECURITY BUG: The JWT secret rotation in auth-service has a race condition.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2497,6 +2621,7 @@
     "evidence": "I recommend Redis Redlock.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2517,6 +2642,7 @@
     "evidence": "Root cause identified: two concurrent token validation threads read the secret value before rotation completes.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2537,6 +2663,7 @@
     "evidence": "[CLOUD-102] Migrate authentication-service storage: AWS S3 → Google Cloud Storage Replace all AWS S3 calls in authentication-service with Google Cloud Storage (GCS).",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2557,6 +2684,7 @@
     "evidence": "[CLOUD-102] Migrate authentication-service storage: AWS S3 → Google Cloud Storage Replace all AWS S3 calls in authentication-service with Google Cloud Storage (GCS).",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2577,6 +2705,7 @@
     "evidence": "[CLOUD-102] Migrate authentication-service storage: AWS S3 → Google Cloud Storage Replace all AWS S3 calls in authentication-service with Google Cloud Storage (GCS).",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2597,6 +2726,7 @@
     "evidence": "[CLOUD-102] Migrate authentication-service storage: AWS S3 → Google Cloud Storage Replace all AWS S3 calls in authentication-service with Google Cloud Storage (GCS).",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2617,6 +2747,7 @@
     "evidence": "Remove boto3 dependency.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2637,6 +2768,7 @@
     "evidence": "[CLOUD-102] Migrate authentication-service storage: AWS S3 → Google Cloud Storage Replace all AWS S3 calls in authentication-service with Google Cloud Storage (GCS).",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2657,6 +2789,7 @@
     "evidence": "[CLOUD-102] Migrate authentication-service storage: AWS S3 → Google Cloud Storage Replace all AWS S3 calls in authentication-service with Google Cloud Storage (GCS).",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2677,6 +2810,7 @@
     "evidence": "AWS S3 fully replaced with GCS in auth-service.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2697,6 +2831,7 @@
     "evidence": "AWS S3 fully replaced with GCS in auth-service.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2717,6 +2852,7 @@
     "evidence": "AWS S3 fully replaced with GCS in auth-service.",
     "confidence": 0.87,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2737,6 +2873,7 @@
     "evidence": "PR #89 merged.",
     "confidence": 0.82,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2757,6 +2894,7 @@
     "evidence": "[CLOUD-105] Team GCP training & certification plan Develop and execute a GCP training plan for the platform engineering team.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2777,6 +2915,7 @@
     "evidence": "[CLOUD-105] Team GCP training & certification plan Develop and execute a GCP training plan for the platform engineering team.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2797,6 +2936,7 @@
     "evidence": "Raised concern to leadership: without adequate training, the GCP migration is high-risk.",
     "confidence": 0.85,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2817,6 +2957,7 @@
     "evidence": "Raised concern to leadership: without adequate training, the GCP migration is high-risk.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   },
   {
@@ -2837,6 +2978,7 @@
     "evidence": "Rohan Mehta and Vikram Patel enrolled in GCP Professional Cloud Architect course.",
     "confidence": 0.8,
     "extraction_mode": "fallback",
+    "relevance_score": null,
     "metadata": {}
   }
 ]

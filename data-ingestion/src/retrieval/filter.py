@@ -116,17 +116,29 @@ class TemporalFilterEngine:
             result = self.apply_temporal_filter(result, tf)
             logger.debug("After temporal filter (%s): %d records", tf.mode.value, len(result))
 
-        # Step 5 — chronological sort
-        result = self.sort_chronologically(result, request.sort_order)
+        # Step 5 — free-text query filter & relevance scoring
+        has_query = bool(request.query_text and request.query_text.strip())
+        if has_query:
+            scored_records: List[RetrievalRecord] = []
+            for r in result:
+                score = self._match_and_score_text_query(r, request.query_text)
+                if score is not None:
+                    scored_records.append(r.model_copy(update={"relevance_score": score}))
+            result = scored_records
+            logger.debug("After free-text query filter: %d records", len(result))
 
-        # Step 6 — limit
+        # Step 6 — sort records (relevance + chronological)
+        result = self.sort_records(result, request.sort_order, has_query=has_query)
+
+        # Step 7 — limit
         result = result[: request.limit]
 
         logger.info(
-            "TemporalFilterEngine.apply: %d → %d records (limit=%d)",
+            "TemporalFilterEngine.apply: %d → %d records (limit=%d, query=%s)",
             len(records),
             len(result),
             request.limit,
+            request.query_text,
         )
         return result
 
@@ -200,7 +212,136 @@ class TemporalFilterEngine:
         reverse = order == SortOrder.DESC
         return sorted(records, key=lambda r: (r.event_date, r.timestamp), reverse=reverse)
 
+    @staticmethod
+    def sort_records(
+        records: List[RetrievalRecord],
+        order: SortOrder = SortOrder.ASC,
+        has_query: bool = False,
+    ) -> List[RetrievalRecord]:
+        """
+        Sort records by relevance score (if query active) and event_date / timestamp.
+
+        When a query is active:
+          - Primary sort: relevance_score DESC (highest score first)
+          - Secondary sort: event_date and timestamp (ASC or DESC according to order)
+
+        When no query is active:
+          - Pure chronological sort by event_date and timestamp (ASC or DESC according to order)
+        """
+        if has_query:
+            if order == SortOrder.DESC:
+                return sorted(
+                    records,
+                    key=lambda r: (
+                        r.relevance_score if r.relevance_score is not None else 0.0,
+                        r.event_date,
+                        r.timestamp,
+                    ),
+                    reverse=True,
+                )
+            else:
+                return sorted(
+                    records,
+                    key=lambda r: (
+                        -(r.relevance_score if r.relevance_score is not None else 0.0),
+                        r.event_date,
+                        r.timestamp,
+                    ),
+                )
+        else:
+            reverse = order == SortOrder.DESC
+            return sorted(records, key=lambda r: (r.event_date, r.timestamp), reverse=reverse)
+
     # ── Private helpers ───────────────────────────────────────────────────────
+
+    @staticmethod
+    def _match_and_score_text_query(
+        record: RetrievalRecord,
+        query: str,
+    ) -> Optional[float]:
+        """
+        Perform deterministic case-insensitive free-text query matching and relevance scoring.
+
+        Weights:
+          - subject / object / entity display names: 3.0 weight per term (5.0 phrase bonus)
+          - relation: 2.0 weight per term (3.0 phrase bonus)
+          - evidence: 1.0 weight per term (2.0 phrase bonus)
+          - source / source_id: 1.0 weight per term (1.0 phrase bonus)
+
+        Returns:
+          float: Relevance score if record matches query (score > 0).
+          None: If record does not match query (score == 0).
+        """
+        if not query:
+            return None
+        q_clean = query.strip().lower()
+        if not q_clean:
+            return None
+
+        raw_terms = [t for t in q_clean.split() if t]
+        if not raw_terms:
+            return None
+
+        # Filter out common question stop words when query has multiple terms
+        common_stop_words = {
+            "what", "when", "where", "which", "who", "whom", "whose", "why",
+            "how", "did", "does", "do", "for", "the", "a", "an", "in", "on",
+            "at", "to", "is", "are", "was", "were", "of", "with", "by", "from",
+        }
+        if len(raw_terms) > 1:
+            terms = [t for t in raw_terms if t not in common_stop_words]
+            if not terms:
+                terms = raw_terms
+        else:
+            terms = raw_terms
+
+        subj = record.subject.lower()
+        subj_disp = (record.subject_display or "").lower()
+        obj = record.object.lower()
+        obj_disp = (record.object_display or "").lower()
+        rel = record.relation.lower()
+        ev = record.evidence.lower()
+        src = record.source.lower()
+        src_id = record.source_id.lower()
+
+        entity_text = f"{subj} {subj_disp} {obj} {obj_disp}"
+        relation_text = rel
+        evidence_text = ev
+        source_text = f"{src} {src_id}"
+
+        score = 0.0
+
+        # Entity scoring
+        if q_clean in entity_text:
+            score += 5.0
+        for t in terms:
+            if t in entity_text:
+                score += 3.0
+
+        # Relation scoring
+        if q_clean in relation_text:
+            score += 3.0
+        for t in terms:
+            if t in relation_text or t in relation_text.replace("_", " "):
+                score += 2.0
+
+        # Evidence scoring
+        if q_clean in evidence_text:
+            score += 2.0
+        for t in terms:
+            if t in evidence_text:
+                score += 1.0
+
+        # Source scoring
+        if q_clean in source_text:
+            score += 1.0
+        for t in terms:
+            if t in source_text:
+                score += 1.0
+
+        if score > 0.0:
+            return round(score, 2)
+        return None
 
     @staticmethod
     def _entity_matches(record: RetrievalRecord, entity_set: set) -> bool:

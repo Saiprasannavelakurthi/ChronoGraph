@@ -2497,3 +2497,94 @@ class TestRetrievalStatsEngine:
             == stats.total_records
         )
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 29. Week 4 Day 3 Advanced Free-Text Query Support Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestAdvancedFreeTextQuery:
+    def test_basic_text_search(self):
+        req = RetrievalRequest(query_text="services", limit=100)
+        res = _engine().apply(SAMPLE_RECORDS, req)
+        assert len(res) > 0
+        for r in res:
+            assert r.relevance_score is not None
+            assert r.relevance_score > 0
+
+    def test_case_insensitive_search(self):
+        req1 = RetrievalRequest(query_text="SERVICES", limit=100)
+        req2 = RetrievalRequest(query_text="services", limit=100)
+        res1 = _engine().apply(SAMPLE_RECORDS, req1)
+        res2 = _engine().apply(SAMPLE_RECORDS, req2)
+        assert len(res1) == len(res2)
+        assert [r.record_id for r in res1] == [r.record_id for r in res2]
+
+    def test_subject_match(self):
+        req = RetrievalRequest(query_text="arun", limit=100)
+        res = _engine().apply(SAMPLE_RECORDS, req)
+        assert len(res) > 0
+        assert any("arun" in r.subject.lower() or (r.subject_display and "arun" in r.subject_display.lower()) for r in res)
+
+    def test_object_match(self):
+        req = RetrievalRequest(query_text="gcp", limit=100)
+        res = _engine().apply(SAMPLE_RECORDS, req)
+        assert len(res) > 0
+        assert any("gcp" in r.object.lower() or (r.object_display and "gcp" in r.object_display.lower()) for r in res)
+
+    def test_relation_match(self):
+        req = RetrievalRequest(query_text="ADVOCATED_FOR", limit=100)
+        res = _engine().apply(SAMPLE_RECORDS, req)
+        assert len(res) > 0
+        assert all("ADVOCATED_FOR" in r.relation for r in res)
+
+    def test_evidence_match(self):
+        req = RetrievalRequest(query_text="suggested", limit=100)
+        res = _engine().apply(SAMPLE_RECORDS, req)
+        assert len(res) > 0
+        assert all("suggested" in r.evidence.lower() for r in res)
+
+    def test_no_match_query(self):
+        req = RetrievalRequest(query_text="non_existent_term_xyz_123", limit=100)
+        res = _engine().apply(SAMPLE_RECORDS, req)
+        assert len(res) == 0
+
+    def test_query_plus_entity_filter(self):
+        req = RetrievalRequest(query_text="gcp", entities=["gcp"], limit=100)
+        res = _engine().apply(SAMPLE_RECORDS, req)
+        assert len(res) > 0
+        for r in res:
+            assert "gcp" in (r.subject.lower(), r.object.lower(), (r.subject_display or "").lower(), (r.object_display or "").lower())
+            assert r.relevance_score is not None
+
+    def test_query_plus_temporal_filter(self):
+        req = RetrievalRequest(
+            query_text="services",
+            temporal_filter=TemporalFilter(after_date=date(2023, 1, 1)),
+            limit=100,
+        )
+        res = _engine().apply(SAMPLE_RECORDS, req)
+        assert len(res) > 0
+        for r in res:
+            assert r.event_date > date(2023, 1, 1)
+
+    def test_query_plus_sorting(self):
+        req_asc = RetrievalRequest(query_text="services", sort_order=SortOrder.ASC, limit=100)
+        req_desc = RetrievalRequest(query_text="services", sort_order=SortOrder.DESC, limit=100)
+        res_asc = _engine().apply(SAMPLE_RECORDS, req_asc)
+        res_desc = _engine().apply(SAMPLE_RECORDS, req_desc)
+        assert len(res_asc) == len(res_desc)
+
+    def test_relevance_ordering(self):
+        req = RetrievalRequest(query_text="gcp suggested", limit=100)
+        res = _engine().apply(SAMPLE_RECORDS, req)
+        scores = [r.relevance_score for r in res]
+        assert scores == sorted(scores, reverse=True)
+
+    def test_empty_query_preserving_existing_behavior(self):
+        req = RetrievalRequest(query_text="", limit=100)
+        res = _engine().apply(SAMPLE_RECORDS, req)
+        assert len(res) == len(SAMPLE_RECORDS)
+        assert all(r.relevance_score is None for r in res)
+
+

@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![LlamaIndex](https://img.shields.io/badge/LlamaIndex-0.10%2B-purple.svg)](https://www.llamaindex.ai/)
 [![Groq LLM](https://img.shields.io/badge/Groq-llama--3.1--8b--instant-orange.svg)](https://groq.com/)
-[![Tests](https://img.shields.io/badge/tests-474%20passed-brightgreen.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/tests-491%20passed-brightgreen.svg)](https://docs.pytest.org/)
 
 **ChronoGraph** is a Temporal GraphRAG pipeline engineered for enterprise forensics, knowledge graph extraction, and cross-platform communication analytics. It ingests unstructured developer communications (Slack messages, GitHub PRs/issues, Jira tickets), extracts temporal entity-relationship triples using LlamaIndex & Groq LLMs (with robust heuristic fallbacks), validates and normalizes entities/relations, deduplicates records, prepares citation-ready chronological retrieval evidence records, and exposes a high-performance REST Retrieval Query API for downstream Temporal Routing and GraphRAG answer generation.
 
@@ -494,6 +494,8 @@ curl -X GET http://localhost:8000/api/health
 ```
 
 #### 2. Temporal Retrieval Query (`POST /api/retrieval/query`)
+
+Executes multi-criteria temporal retrieval. When a `query` (or `query_text`) is provided, performs deterministic, explainable case-insensitive free-text search across subject, object, display names, relation, evidence, source, and source ID. Matches are scored with lightweight relevance weights (Entity: 3.0, Relation: 2.0, Evidence: 1.0, Source: 1.0) without requiring an LLM or external search database.
 
 ```bash
 curl -X POST http://localhost:8000/api/retrieval/query \

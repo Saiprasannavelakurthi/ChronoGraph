@@ -210,7 +210,7 @@ Returns comprehensive data quality metrics computed from `retrieval_ready_record
 
 ## 4. Filtering and Sorting Logic
 
-The filtering engine evaluates constraints strictly in this deterministic sequence:
+The filtering engine evaluates constraints strictly in this deterministic sequence (without requiring an LLM or external search engine):
 
 1. **Source System Filtering**: Records must match one of the allowed sources in `sources`.
 2. **Entity Filtering**: Matches against `subject`, `object`, `subject_display`, or `object_display` (case-insensitive).
@@ -220,9 +220,19 @@ The filtering engine evaluates constraints strictly in this deterministic sequen
    - `start_date` / `end_date`: Inclusive boundary check (`start_date <= event_date <= end_date`).
    - `before_date`: Strict upper bound (`event_date < before_date`).
    - `after_date`: Strict lower bound (`event_date > after_date`).
-5. **Total Matches Calculation**: Count of all records passing steps 1–4.
-6. **Chronological Sorting**: Sorted on `(event_date, timestamp)` in ASC or DESC order.
-7. **Limit / Pagination**: Sliced to `[:limit]`.
+5. **Free-Text Query Matching & Relevance Scoring**:
+   - When a free-text `query` (or `query_text`) is supplied, records are matched case-insensitively across `subject`, `object`, display names, `relation`, `evidence`, `source`, and `source_id`.
+   - Deterministic relevance score weighting:
+     - Entity match (`subject`/`object`/display names): **3.0** per term (+5.0 phrase bonus).
+     - Relation label match: **2.0** per term (+3.0 phrase bonus).
+     - Evidence snippet match: **1.0** per term (+2.0 phrase bonus).
+     - Source system / ID match: **1.0** per term (+1.0 phrase bonus).
+   - Only records with score > 0 are retained.
+6. **Total Matches Calculation**: Count of all records passing steps 1–5.
+7. **Sorting**:
+   - When `query` is present: Primary sort by `relevance_score` (descending). Secondary tie-breaking sort by `(event_date, timestamp)` according to `sort_order` (`asc` or `desc`).
+   - When `query` is omitted: Pure chronological sort on `(event_date, timestamp)` according to `sort_order`.
+8. **Limit / Pagination**: Page slicing `[(page-1)*page_size : page*page_size]`.
 
 ---
 

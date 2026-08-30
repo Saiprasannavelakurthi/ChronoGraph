@@ -373,6 +373,10 @@ class RetrievalRecord(BaseModel):
         default=None,
         description="Extraction backend that produced this triple.",
     )
+    relevance_score: Optional[float] = Field(
+        default=None,
+        description="Deterministic relevance score when a free-text query is applied.",
+    )
 
     # ── Extensibility ─────────────────────────────────────────────────────────
     metadata: Dict[str, Any] = Field(

@@ -741,3 +741,147 @@ class TestApiPagination:
             assert res2.total_matches == res1.total_matches
             assert res2.returned_count == res1.returned_count
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 6. Week 4 Day 3 Free-Text Query API Endpoint Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestApiFreeTextQueryEndpoint:
+    def test_api_basic_text_search(self) -> None:
+        response = client.post("/api/retrieval/query", json={"query": "migration"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        for r in data["results"]:
+            assert r["relevance_score"] is not None
+            assert r["relevance_score"] > 0
+
+    def test_api_case_insensitive_search(self) -> None:
+        r1 = client.post("/api/retrieval/query", json={"query": "MIGRATION"}).json()
+        r2 = client.post("/api/retrieval/query", json={"query": "migration"}).json()
+        assert r1["total_matches"] == r2["total_matches"]
+
+    def test_api_subject_matching(self) -> None:
+        response = client.post("/api/retrieval/query", json={"query": "arun"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        assert any("arun" in r["subject"].lower() for r in data["results"])
+
+    def test_api_object_matching(self) -> None:
+        response = client.post("/api/retrieval/query", json={"query": "gcp"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        assert any("gcp" in r["object"].lower() for r in data["results"])
+
+    def test_api_display_name_matching(self) -> None:
+        response = client.post("/api/retrieval/query", json={"query": "Arun"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        assert any("arun" in r["subject"].lower() or (r["subject_display"] and "arun" in r["subject_display"].lower()) for r in data["results"])
+
+    def test_api_relation_matching(self) -> None:
+        response = client.post("/api/retrieval/query", json={"query": "MIGRATED_TO"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        assert all("MIGRATED_TO" in r["relation"] for r in data["results"])
+
+    def test_api_evidence_matching(self) -> None:
+        response = client.post("/api/retrieval/query", json={"query": "leadership"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        assert all("leadership" in r["evidence"].lower() for r in data["results"])
+
+    def test_api_source_matching(self) -> None:
+        response = client.post("/api/retrieval/query", json={"query": "jira"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        assert any("jira" in r["source"].lower() or "jira" in r["source_id"].lower() for r in data["results"])
+
+    def test_api_no_match_query(self) -> None:
+        response = client.post("/api/retrieval/query", json={"query": "non_existent_xyz_999"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] == 0
+        assert data["returned_count"] == 0
+        assert data["results"] == []
+
+    def test_api_query_plus_entity_filter(self) -> None:
+        response = client.post("/api/retrieval/query", json={"query": "migration", "entity_hints": ["gcp"]})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+
+    def test_api_query_plus_relation_filter(self) -> None:
+        response = client.post("/api/retrieval/query", json={"query": "gcp", "relation_hints": ["MIGRATED_TO"]})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        for r in data["results"]:
+            assert r["relation"] == "MIGRATED_TO"
+
+    def test_api_query_plus_source_filter(self) -> None:
+        response = client.post("/api/retrieval/query", json={"query": "migration", "sources": ["slack"]})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        for r in data["results"]:
+            assert r["source"] == "slack"
+
+    def test_api_query_plus_temporal_filter(self) -> None:
+        payload = {
+            "query": "migration",
+            "after_date": "2023-04-01",
+            "page": 1,
+            "page_size": 10,
+        }
+        response = client.post("/api/retrieval/query", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        for r in data["results"]:
+            assert r["event_date"] > "2023-04-01"
+
+    def test_api_query_plus_pagination(self) -> None:
+        response = client.post("/api/retrieval/query", json={"query": "migration", "page": 1, "page_size": 5})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["page"] == 1
+        assert data["page_size"] == 5
+        assert data["returned_count"] == 5
+        assert len(data["results"]) == 5
+
+    def test_api_query_plus_sorting_asc_desc(self) -> None:
+        r_asc = client.post("/api/retrieval/query", json={"query": "migration", "sort_order": "asc", "page_size": 10}).json()
+        r_desc = client.post("/api/retrieval/query", json={"query": "migration", "sort_order": "desc", "page_size": 10}).json()
+        assert r_asc["total_matches"] == r_desc["total_matches"]
+
+    def test_api_relevance_ordering(self) -> None:
+        response = client.post("/api/retrieval/query", json={"query": "gcp migration"})
+        assert response.status_code == 200
+        scores = [r["relevance_score"] for r in response.json()["results"]]
+        assert scores == sorted(scores, reverse=True)
+
+    def test_api_backward_compatibility_empty_query(self) -> None:
+        response = client.post("/api/retrieval/query", json={})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] == 142
+        for r in data["results"]:
+            assert r["relevance_score"] is None
+
+    def test_api_existing_limit_behavior(self) -> None:
+        response = client.post("/api/retrieval/query", json={"query": "migration", "limit": 3})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["returned_count"] == 3
+        assert len(data["results"]) == 3
+
+
+
