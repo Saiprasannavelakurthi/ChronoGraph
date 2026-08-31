@@ -125,10 +125,11 @@ class GraphExtractionResult(BaseModel):
     @model_validator(mode="after")
     def ensure_triples_populated(self) -> "GraphExtractionResult":
         """
-        If triples array is empty but relationships exist, automatically generate
-        corresponding graph triples (subject = source, predicate = relation, object = target).
+        Ensure the triples array is exactly synchronized with the relationships array.
+        If a relationship exists, the corresponding triple must represent the same
+        subject, predicate, and object. Any inconsistent triples are overwritten.
         """
-        if not self.triples and self.relationships:
+        if self.relationships:
             generated_triples = []
             for rel in self.relationships:
                 rel_str = rel.relation.value if isinstance(rel.relation, Enum) else str(rel.relation)

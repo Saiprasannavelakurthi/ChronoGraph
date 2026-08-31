@@ -110,36 +110,28 @@ class GraphExtractor:
             if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
                 json_str = json_str[start_idx:end_idx + 1]
             else:
-                logger.warning(
-                    f"LLM response contains no recognizable JSON object boundaries. "
-                    f"Response snippet: {snippet!r}"
-                )
-                return GraphExtractionResult(entities=[], relationships=[], triples=[])
+                error_msg = f"LLM response contains no recognizable JSON object boundaries. Response snippet: {snippet!r}"
+                logger.warning(error_msg)
+                raise MalformedLLMResponseError(error_msg)
 
         try:
             data = json.loads(json_str)
         except json.JSONDecodeError as err:
-            logger.warning(
-                f"Failed to parse LLM JSON response (JSONDecodeError at position {err.pos}): {err.msg}. "
-                f"Response snippet: {snippet!r}"
-            )
-            return GraphExtractionResult(entities=[], relationships=[], triples=[])
+            error_msg = f"Failed to parse LLM JSON response (JSONDecodeError at position {err.pos}): {err.msg}. Response snippet: {snippet!r}"
+            logger.warning(error_msg)
+            raise MalformedLLMResponseError(error_msg, original_error=err)
 
         if not isinstance(data, dict):
-            logger.warning(
-                f"LLM JSON payload is not a dictionary (got {type(data).__name__}). "
-                f"Response snippet: {snippet!r}"
-            )
-            return GraphExtractionResult(entities=[], relationships=[], triples=[])
+            error_msg = f"LLM JSON payload is not a dictionary (got {type(data).__name__}). Response snippet: {snippet!r}"
+            logger.warning(error_msg)
+            raise MalformedLLMResponseError(error_msg)
 
         try:
             return GraphExtractionResult.model_validate(data)
         except Exception as val_err:
-            logger.warning(
-                f"LLM extraction payload failed GraphExtractionResult schema validation: {val_err}. "
-                f"Parsed data keys: {list(data.keys()) if isinstance(data, dict) else 'N/A'}"
-            )
-            return GraphExtractionResult(entities=[], relationships=[], triples=[])
+            error_msg = f"LLM extraction payload failed GraphExtractionResult schema validation: {val_err}. Parsed data keys: {list(data.keys()) if isinstance(data, dict) else 'N/A'}"
+            logger.warning(error_msg)
+            raise MalformedLLMResponseError(error_msg, original_error=val_err)
 
     def post_process(self, result: GraphExtractionResult) -> GraphExtractionResult:
         """

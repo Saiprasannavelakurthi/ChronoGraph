@@ -162,7 +162,7 @@ def validate_extraction(
             src_key = src_raw.lower()
             if src_key not in known_references:
                 errors.append(
-                    f"Relationship source '{rel.source}' at index {idx} is a dangling reference not found in extracted entities."
+                    f"Relationship source '{rel.source}' does not exist in extracted entities."
                 )
 
         # Target cross-reference check
@@ -170,7 +170,7 @@ def validate_extraction(
             tgt_key = tgt_raw.lower()
             if tgt_key not in known_references:
                 errors.append(
-                    f"Relationship target '{rel.target}' at index {idx} is a dangling reference not found in extracted entities."
+                    f"Relationship target '{rel.target}' does not exist in extracted entities."
                 )
 
         if src_raw and rel.relation and tgt_raw:
@@ -214,7 +214,7 @@ def validate_extraction(
             subj_key = subj_raw.lower()
             if subj_key not in known_references:
                 errors.append(
-                    f"Triple subject '{triple.subject}' at index {idx} is a dangling reference not found in extracted entities."
+                    f"Triple subject '{triple.subject}' does not exist in extracted entities."
                 )
 
         # Object cross-reference check
@@ -222,7 +222,7 @@ def validate_extraction(
             obj_key = obj_raw.lower()
             if obj_key not in known_references:
                 errors.append(
-                    f"Triple object '{triple.object}' at index {idx} is a dangling reference not found in extracted entities."
+                    f"Triple object '{triple.object}' does not exist in extracted entities."
                 )
 
         if subj_raw and triple.predicate and obj_raw:

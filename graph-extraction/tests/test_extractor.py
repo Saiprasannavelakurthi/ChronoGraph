@@ -139,12 +139,9 @@ def test_invalid_llm_output(mock_llm):
     mock_llm.complete.return_value = MagicMock(text="Sorry, I cannot process this text format.")
     extractor = GraphExtractor(llm=mock_llm)
 
-    result = extractor.extract("Invalid text output response")
-
-    assert isinstance(result, GraphExtractionResult)
-    assert len(result.entities) == 0
-    assert len(result.relationships) == 0
-    assert len(result.triples) == 0
+    from src.errors import MalformedLLMResponseError
+    with pytest.raises(MalformedLLMResponseError):
+        extractor.extract("Invalid text output response")
 
 
 def test_multiple_relationships_between_same_entities(mock_llm):
