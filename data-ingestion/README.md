@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![LlamaIndex](https://img.shields.io/badge/LlamaIndex-0.10%2B-purple.svg)](https://www.llamaindex.ai/)
 [![Groq LLM](https://img.shields.io/badge/Groq-llama--3.1--8b--instant-orange.svg)](https://groq.com/)
-[![Tests](https://img.shields.io/badge/tests-491%20passed-brightgreen.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/tests-520%20passed-brightgreen.svg)](https://docs.pytest.org/)
 
 **ChronoGraph** is a Temporal GraphRAG pipeline engineered for enterprise forensics, knowledge graph extraction, and cross-platform communication analytics. It ingests unstructured developer communications (Slack messages, GitHub PRs/issues, Jira tickets), extracts temporal entity-relationship triples using LlamaIndex & Groq LLMs (with robust heuristic fallbacks), validates and normalizes entities/relations, deduplicates records, prepares citation-ready chronological retrieval evidence records, and exposes a high-performance REST Retrieval Query API for downstream Temporal Routing and GraphRAG answer generation.
 
@@ -128,11 +128,12 @@ data-ingestion/
 │   │   ├── slack_loader.py           # Slack messages ingestor
 │   │   └── pipeline.py               # Multi-source ingestion orchestrator
 │   ├── retrieval/
-│   │   ├── __init__.py               # Public exports (models, builder, filter engine, validator, stats, service)
+│   │   ├── __init__.py               # Public exports (models, builder, filter engine, validator, stats, service, errors)
 │   │   ├── builder.py                # Builds RetrievalRecord list + writes execution metadata
-│   │   ├── filter.py                 # In-memory chronological & entity filter engine
+│   │   ├── errors.py                 # Retrieval domain exception hierarchy (RetrievalDataNotFoundError, RetrievalDataFormatError, etc.)
+│   │   ├── filter.py                 # In-memory chronological, entity, & free-text ranking filter engine
 │   │   ├── models.py                 # RetrievalRecord, TemporalFilter, RetrievalRequest, RetrievalQueryRequest, RetrievalQueryResponse, RetrievalHealthResponse
-│   │   ├── service.py                # Week 4 RetrievalService orchestrating safe loading, filtering & API querying
+│   │   ├── service.py                # Week 4 RetrievalService orchestrating safe loading, caching, filtering & API querying
 │   │   ├── stats.py                  # Data quality and coverage statistics engine (RetrievalStatsEngine)
 │   │   └── validator.py              # Post-build consistency validator (RetrievalOutputValidator)
 │   └── schemas/
@@ -223,8 +224,12 @@ data-ingestion/
 - **RetrievalStatsEngine**: Computes data quality and coverage statistics (`unique_entities`, `unique_relations`, `source_breakdown`, `average_confidence`) into `retrieval_quality_stats.json`.
 - **Data Contract**: Formal specification for temporal retrieval records and execution metadata ([`docs/RETRIEVAL_DATA_CONTRACT.md`](docs/RETRIEVAL_DATA_CONTRACT.md)).
 
-#### Week 4: Temporal Retrieval Query API
-- **RetrievalService Layer**: Service layer in `src/retrieval/service.py` that loads, validates, and caches `retrieval_ready_records.json`, normalizes queries, executes multi-dimensional filtering via `TemporalFilterEngine`, computes total matches before limits, and formats structured responses.
+#### Week 4: Temporal Retrieval Query API & Error Resilience
+- **RetrievalService Layer**: Service layer in `src/retrieval/service.py` that loads, validates, and caches `retrieval_ready_records.json`, normalizes queries, executes multi-dimensional filtering and relevance scoring via `TemporalFilterEngine`, computes total matches before limits, and formats structured responses.
+- **Resilient Error Handling (Day 4)**:
+  - Custom domain exceptions (`RetrievalDataNotFoundError`, `RetrievalDataFormatError`, `RetrievalServiceError`) mapped to safe HTTP 404/500 responses without exposing local filesystem paths, database credentials, or stack traces.
+  - Resilient cache management ensuring that previously valid cached records are preserved and remain queryable even if a reload attempt fails.
+  - Partial file corruption tolerance skipping malformed individual records with warning logs.
 - **FastAPI Endpoints**:
   - `GET /api/health` — Health check reporting service status, data availability on disk, and total record count.
   - `POST /api/retrieval/query` — Flexible temporal retrieval endpoint accepting natural language queries, entity hints, relation labels, source filters, date ranges/bounds, sorting, and pagination with full provenance.
@@ -595,12 +600,12 @@ python -m pytest tests/ -q
 ```
 
 ### Verified Test Status
-- **457 passed** tests across 5 test modules:
+- **520 passed** tests across 5 test modules:
   - `tests/test_ingestion.py` — Ingestion loaders, preprocessing, and normalization (Week 1)
   - `tests/test_extraction.py` — LlamaIndex/Groq extraction and heuristic fallbacks (Week 1)
   - `tests/test_graph_prep.py` — Graph preparation validation, normalization, and deduplication (Week 2)
   - `tests/test_retrieval.py` — RetrievalRecordBuilder, TemporalFilterEngine, models, RetrievalOutputValidator, RetrievalStatsEngine, and RetrievalDataQualityStats (Week 3)
-  - `tests/test_retrieval_api.py` — RetrievalService unit tests and FastAPI query endpoints (Week 4)
+  - `tests/test_retrieval_api.py` — RetrievalService unit tests, FastAPI query endpoints, pagination, free-text ranking, and error resilience (Week 4)
 
 ---
 

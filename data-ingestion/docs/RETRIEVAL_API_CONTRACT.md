@@ -247,10 +247,22 @@ Every result item in `results` contains the complete audit trail:
 
 ---
 
-## 6. Error Handling
+## 6. Error Handling & Resilience
 
-| HTTP Status | Condition | Example Response Body |
-|---|---|---|
-| `404 Not Found` | `retrieval_ready_records.json` missing on disk | `{"detail": "Retrieval data file not found at ... Run 'python main.py --prepare-retrieval' first."}` |
-| `422 Unprocessable Entity` | Invalid request parameters (e.g. `start_date > end_date`, unknown source name, `limit < 1`) | `{"detail": [{"loc": ["body", "start_date"], "msg": "start_date must not be after end_date", "type": "value_error"}]}` |
-| `500 Internal Server Error` | File corruption or server error | `{"detail": "Retrieval data file is corrupted or cannot be parsed."}` |
+The ChronoGraph Retrieval API enforces secure, consistent error handling without exposing internal stack traces, local filesystem paths, or environment variables to API clients.
+
+### 6.1 HTTP Status Codes & Error Responses
+
+| HTTP Status | Trigger Condition | Response Structure | Description |
+|---|---|---|---|
+| `404 Not Found` | `retrieval_ready_records.json` or stats missing on disk | `{"detail": "Retrieval data file not found. Run 'python main.py --prepare-retrieval' first."}` | Raised when evidence data has not been prepared. Safe message returned. |
+| `422 Unprocessable Entity` | Pydantic validation failure (e.g. invalid date order, non-existent source enum, invalid page/limit) | `{"detail": [{"loc": ["body", "start_date"], "msg": "start_date must not be after end_date", "type": "value_error"}]}` | Standard FastAPI/Pydantic validation errors with field location details. |
+| `500 Internal Server Error` | File corruption, invalid JSON, or unparseable top-level data structure | `{"detail": "Retrieval data file is corrupted or cannot be parsed."}` | Domain format error safely wrapped to prevent data leakage. |
+| `500 Internal Server Error` | Unexpected internal server or service runtime failure | `{"detail": "Internal server error occurred while processing retrieval query."}` | Sanitized generic message; full traceback logged internally. |
+
+### 6.2 Resilience & Caching Guarantees
+
+1. **In-Memory Cache Preservation**: Successfully loaded records remain safely cached. If a subsequent `load_records(force_reload=True)` fails due to file deletion or syntax errors, the existing cache is preserved and remains queryable.
+2. **Partial Corruption Tolerance**: If individual records in `retrieval_ready_records.json` are malformed or missing required fields, they are logged as warnings and skipped, allowing all valid records to load successfully.
+3. **Empty File Safety**: An empty `retrieval_ready_records.json` is treated cleanly as zero records (`[]`) without throwing unhandled exceptions.
+4. **Information Security**: Error responses never include Python tracebacks, database URIs, local filesystem directory structures, or API tokens.

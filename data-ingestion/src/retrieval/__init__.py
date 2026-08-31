@@ -1,7 +1,7 @@
 """
 src/retrieval/__init__.py
 ─────────────────────────
-Week 3 — Temporal Retrieval Preparation (Karkuvel's module).
+Week 3 & 4 — Temporal Retrieval Preparation & Service (Karkuvel's module).
 
 Public API:
 
@@ -11,12 +11,29 @@ Public API:
     from src.retrieval.filter import TemporalFilterEngine
     from src.retrieval.validator import RetrievalOutputValidator, ValidationResult
     from src.retrieval.stats import RetrievalStatsEngine
+    from src.retrieval.service import RetrievalService
+    from src.retrieval.errors import (
+        RetrievalError,
+        RetrievalServiceError,
+        RetrievalDataError,
+        RetrievalDataNotFoundError,
+        RetrievalDataFormatError,
+        RetrievalDataCorruptedError,
+    )
 
 This module does NOT own Neo4j, Cypher, or natural-language-to-query conversion.
-It prepares retrieval-ready evidence records and lightweight filter schemas so the
-downstream Temporal Routing / GraphRAG engine can perform chronological retrieval.
+It prepares retrieval-ready evidence records, executes filtered/ranked temporal
+queries, and exposes structured REST endpoints with high resilience.
 """
 
+from src.retrieval.errors import (
+    RetrievalDataCorruptedError,
+    RetrievalDataError,
+    RetrievalDataFormatError,
+    RetrievalDataNotFoundError,
+    RetrievalError,
+    RetrievalServiceError,
+)
 from src.retrieval.models import (
     PipelineExecutionMetadata,
     RetrievalDataQualityStats,
@@ -29,12 +46,7 @@ from src.retrieval.models import (
 )
 from src.retrieval.builder import RetrievalRecordBuilder
 from src.retrieval.filter import TemporalFilterEngine
-from src.retrieval.service import (
-    RetrievalDataCorruptedError,
-    RetrievalDataNotFoundError,
-    RetrievalService,
-    RetrievalServiceError,
-)
+from src.retrieval.service import RetrievalService
 from src.retrieval.validator import RetrievalOutputValidator, ValidationResult
 from src.retrieval.stats import RetrievalStatsEngine
 
@@ -50,12 +62,13 @@ __all__ = [
     "RetrievalRecordBuilder",
     "TemporalFilterEngine",
     "RetrievalService",
+    "RetrievalError",
     "RetrievalServiceError",
+    "RetrievalDataError",
     "RetrievalDataNotFoundError",
+    "RetrievalDataFormatError",
     "RetrievalDataCorruptedError",
     "RetrievalOutputValidator",
     "ValidationResult",
     "RetrievalStatsEngine",
 ]
-
-

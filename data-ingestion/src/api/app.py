@@ -29,24 +29,28 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Query, status
+from fastapi import FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from config.settings import settings
 from src.extraction.extractor import TemporalTripleExtractor
 from src.ingestion.pipeline import IngestionPipeline
+from src.retrieval.errors import (
+    RetrievalDataCorruptedError,
+    RetrievalDataError,
+    RetrievalDataFormatError,
+    RetrievalDataNotFoundError,
+    RetrievalError,
+    RetrievalServiceError,
+)
 from src.retrieval.models import (
     RetrievalHealthResponse,
     RetrievalQueryRequest,
     RetrievalQueryResponse,
 )
-from src.retrieval.service import (
-    RetrievalDataCorruptedError,
-    RetrievalDataNotFoundError,
-    RetrievalService,
-    RetrievalServiceError,
-)
+from src.retrieval.service import RetrievalService
 from src.schemas.graph import Triple
 
 logger = logging.getLogger(__name__)
@@ -77,6 +81,38 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Exception Handlers ───────────────────────────────────────────────────────
+
+@app.exception_handler(RetrievalDataNotFoundError)
+async def retrieval_data_not_found_handler(request: Request, exc: RetrievalDataNotFoundError) -> JSONResponse:
+    """Safe 404 handler for missing retrieval data without leaking paths or traces."""
+    logger.warning("Retrieval data not found: %s", exc)
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": "Retrieval data file not found. Run 'python main.py --prepare-retrieval' first."},
+    )
+
+
+@app.exception_handler(RetrievalDataFormatError)
+async def retrieval_data_format_handler(request: Request, exc: RetrievalDataFormatError) -> JSONResponse:
+    """Safe 500 handler for corrupted retrieval data."""
+    logger.error("Retrieval data format error: %s", exc)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Retrieval data file is corrupted or cannot be parsed."},
+    )
+
+
+@app.exception_handler(RetrievalServiceError)
+async def retrieval_service_error_handler(request: Request, exc: RetrievalServiceError) -> JSONResponse:
+    """Safe 500 handler for unexpected retrieval service errors."""
+    logger.error("Retrieval service error: %s", exc)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Internal retrieval service error occurred."},
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -431,7 +467,17 @@ async def api_health() -> RetrievalHealthResponse:
     Return API service health status, retrieval data availability on disk,
     and total loaded record count.
     """
-    return retrieval_service.get_health()
+    try:
+        return retrieval_service.get_health()
+    except Exception as exc:
+        logger.error("Error during health check: %s", exc)
+        return RetrievalHealthResponse(
+            status="ok",
+            service="ChronoGraph Retrieval API",
+            version="1.0.0",
+            retrieval_data_available=False,
+            retrieval_records_count=None,
+        )
 
 
 @app.post(
@@ -457,16 +503,22 @@ async def query_retrieval(request: RetrievalQueryRequest) -> RetrievalQueryRespo
     try:
         return retrieval_service.query(request)
     except RetrievalDataNotFoundError as exc:
-        logger.warning("Retrieval query failed: %s", exc)
+        logger.warning("Retrieval query failed - data not found: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
+            detail="Retrieval data file not found. Run 'python main.py --prepare-retrieval' first.",
         ) from exc
-    except RetrievalDataCorruptedError as exc:
+    except (RetrievalDataFormatError, RetrievalDataCorruptedError) as exc:
         logger.error("Corrupted retrieval data encountered during query: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Retrieval data file is corrupted or cannot be parsed.",
+        ) from exc
+    except RetrievalServiceError as exc:
+        logger.error("Retrieval service error during query: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal retrieval service error occurred while processing query.",
         ) from exc
     except HTTPException:
         raise
@@ -495,8 +547,22 @@ async def get_retrieval_stats() -> Dict[str, Any]:
         logger.warning("Retrieval stats unavailable: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
+            detail="Retrieval data file not found. Run 'python main.py --prepare-retrieval' first.",
         ) from exc
+    except (RetrievalDataFormatError, RetrievalDataCorruptedError) as exc:
+        logger.error("Corrupted retrieval data encountered during stats retrieval: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Retrieval data file is corrupted or cannot be parsed.",
+        ) from exc
+    except RetrievalServiceError as exc:
+        logger.error("Retrieval service error during stats retrieval: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal retrieval service error occurred while retrieving data statistics.",
+        ) from exc
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error("Unexpected error in /api/retrieval/stats: %s", exc)
         raise HTTPException(

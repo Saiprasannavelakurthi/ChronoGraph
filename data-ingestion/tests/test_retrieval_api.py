@@ -48,12 +48,15 @@ from src.retrieval.models import (
     SortOrder,
     TemporalFilter,
 )
-from src.retrieval.service import (
+from src.retrieval.errors import (
     RetrievalDataCorruptedError,
+    RetrievalDataError,
+    RetrievalDataFormatError,
     RetrievalDataNotFoundError,
-    RetrievalService,
+    RetrievalError,
     RetrievalServiceError,
 )
+from src.retrieval.service import RetrievalService
 
 client = TestClient(app)
 
@@ -882,6 +885,252 @@ class TestApiFreeTextQueryEndpoint:
         data = response.json()
         assert data["returned_count"] == 3
         assert len(data["results"]) == 3
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 7. Week 4 Day 4 Error Handling & Resilience Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestRetrievalErrorHandlingAndResilience:
+    """Comprehensive test suite for Week 4 Day 4 Error Handling & Resilience."""
+
+    def test_missing_retrieval_file_exception(self, tmp_path: Path) -> None:
+        non_existent = tmp_path / "missing_records.json"
+        service = RetrievalService(records_path=non_existent)
+        with pytest.raises(RetrievalDataNotFoundError) as exc_info:
+            service.load_records()
+        assert isinstance(exc_info.value, RetrievalDataError)
+        assert isinstance(exc_info.value, RetrievalServiceError)
+        assert isinstance(exc_info.value, RetrievalError)
+
+    def test_empty_retrieval_file_handling(self, tmp_path: Path) -> None:
+        empty_file = tmp_path / "retrieval_ready_records.json"
+        empty_file.write_text("   \n  ", encoding="utf-8")
+        service = RetrievalService(records_path=empty_file)
+        records = service.load_records()
+        assert records == []
+        # Querying an empty records file should return 0 results safely without crashing
+        resp = service.query(RetrievalQueryRequest(query="test"))
+        assert resp.total_matches == 0
+        assert resp.returned_count == 0
+        assert resp.results == []
+
+    def test_invalid_json_raises_format_error(self, tmp_path: Path) -> None:
+        corrupted_file = tmp_path / "corrupted.json"
+        corrupted_file.write_text("{ unclosed json: [1, 2, 3", encoding="utf-8")
+        service = RetrievalService(records_path=corrupted_file)
+        with pytest.raises(RetrievalDataFormatError):
+            service.load_records()
+
+    def test_invalid_top_level_structure_dict(self, tmp_path: Path) -> None:
+        dict_file = tmp_path / "dict_top_level.json"
+        dict_file.write_text('{"records": [{"record_id": "123"}]}', encoding="utf-8")
+        service = RetrievalService(records_path=dict_file)
+        with pytest.raises(RetrievalDataFormatError) as exc_info:
+            service.load_records()
+        assert "Expected a JSON list of records" in str(exc_info.value)
+
+    def test_invalid_top_level_structure_primitive(self, tmp_path: Path) -> None:
+        primitive_file = tmp_path / "primitive.json"
+        primitive_file.write_text('"just a string"', encoding="utf-8")
+        service = RetrievalService(records_path=primitive_file)
+        with pytest.raises(RetrievalDataFormatError):
+            service.load_records()
+
+    def test_malformed_individual_records_skipped(
+        self, tmp_path: Path, sample_records_data: List[Dict[str, Any]]
+    ) -> None:
+        mixed_records = list(sample_records_data)
+        # Add non-dict item
+        mixed_records.append(12345)
+        mixed_records.append("string item")
+        # Add item missing required fields
+        mixed_records.append({"source": "slack", "invalid": "record"})
+        mixed_records.append({"record_id": "invalid_date", "timestamp": "not-a-timestamp"})
+
+        mixed_file = tmp_path / "mixed.json"
+        with open(mixed_file, "w", encoding="utf-8") as fh:
+            json.dump(mixed_records, fh)
+
+        service = RetrievalService(records_path=mixed_file)
+        records = service.load_records()
+        # Only the 3 valid records from sample_records_data should be loaded
+        assert len(records) == 3
+        assert [r.record_id for r in records] == ["rec_001", "rec_002", "rec_003"]
+
+    def test_missing_required_fields_skipped(
+        self, tmp_path: Path, sample_records_data: List[Dict[str, Any]]
+    ) -> None:
+        # Create a record missing 'evidence' and 'subject'
+        bad_rec = dict(sample_records_data[0])
+        del bad_rec["evidence"]
+        del bad_rec["subject"]
+
+        data = [bad_rec, sample_records_data[1]]
+        file_path = tmp_path / "missing_fields.json"
+        with open(file_path, "w", encoding="utf-8") as fh:
+            json.dump(data, fh)
+
+        service = RetrievalService(records_path=file_path)
+        records = service.load_records()
+        assert len(records) == 1
+        assert records[0].record_id == "rec_002"
+
+    def test_api_404_safe_response_when_retrieval_data_missing(self) -> None:
+        with patch.object(
+            RetrievalService,
+            "query",
+            side_effect=RetrievalDataNotFoundError("Data file not found at /secret/path/on/disk"),
+        ):
+            response = client.post("/api/retrieval/query", json={"query": "test"})
+            assert response.status_code == 404
+            data = response.json()
+            assert "detail" in data
+            # Message must be safe and not reveal filesystem secrets
+            assert "not found" in data["detail"].lower()
+            assert "/secret/path/on/disk" not in data["detail"]
+            assert "Traceback" not in data["detail"]
+
+    def test_api_500_safe_response_when_corrupted_data(self) -> None:
+        with patch.object(
+            RetrievalService,
+            "query",
+            side_effect=RetrievalDataFormatError("Corrupted JSON at char 42 on /var/internal/db"),
+        ):
+            response = client.post("/api/retrieval/query", json={"query": "test"})
+            assert response.status_code == 500
+            data = response.json()
+            assert "detail" in data
+            assert "corrupted" in data["detail"].lower()
+            assert "/var/internal/db" not in data["detail"]
+            assert "Traceback" not in data["detail"]
+
+    def test_api_500_safe_response_on_unexpected_exception(self) -> None:
+        with patch.object(
+            RetrievalService,
+            "query",
+            side_effect=RuntimeError("Secret DB connection failed: postgres://admin:secretPass@internal-db:5432"),
+        ):
+            response = client.post("/api/retrieval/query", json={"query": "test"})
+            assert response.status_code == 500
+            data = response.json()
+            assert "detail" in data
+            # Must return generic safe message and NOT leak DB URL or secrets
+            assert data["detail"] == "Internal server error occurred while processing retrieval query."
+            assert "postgres://" not in data["detail"]
+            assert "secretPass" not in data["detail"]
+
+    def test_api_invalid_request_returns_422(self) -> None:
+        # Invalid sort_order value
+        response = client.post("/api/retrieval/query", json={"sort_order": "random_order"})
+        assert response.status_code == 422
+
+        # Invalid page number (<= 0)
+        response = client.post("/api/retrieval/query", json={"page": -1})
+        assert response.status_code == 422
+
+        # Invalid source list containing invalid types
+        response = client.post("/api/retrieval/query", json={"sources": 12345})
+        assert response.status_code == 422
+
+    def test_cached_valid_data_remains_usable_on_failed_reload(
+        self, tmp_path: Path, sample_records_data: List[Dict[str, Any]]
+    ) -> None:
+        file_path = tmp_path / "records.json"
+        with open(file_path, "w", encoding="utf-8") as fh:
+            json.dump(sample_records_data, fh)
+
+        service = RetrievalService(records_path=file_path)
+        # Initial load succeeds
+        initial_records = service.load_records()
+        assert len(initial_records) == 3
+
+        # Now corrupt the file on disk
+        file_path.write_text("{ corrupt json", encoding="utf-8")
+
+        # Attempting force_reload raises RetrievalDataFormatError
+        with pytest.raises(RetrievalDataFormatError):
+            service.load_records(force_reload=True)
+
+        # But the previous cached records must remain intact and usable!
+        cached = service.load_records(force_reload=False)
+        assert len(cached) == 3
+        assert [r.record_id for r in cached] == ["rec_001", "rec_002", "rec_003"]
+
+        # Queries still execute successfully using cached records
+        resp = service.query(RetrievalQueryRequest(query="arun"))
+        assert resp.total_matches == 1
+        assert resp.results[0].subject == "arun_sharma"
+
+    def test_force_reload_behavior(
+        self, tmp_path: Path, sample_records_data: List[Dict[str, Any]]
+    ) -> None:
+        file_path = tmp_path / "records.json"
+        with open(file_path, "w", encoding="utf-8") as fh:
+            json.dump(sample_records_data[:2], fh)
+
+        service = RetrievalService(records_path=file_path)
+        records_initial = service.load_records()
+        assert len(records_initial) == 2
+
+        # Update disk file with 3 records
+        with open(file_path, "w", encoding="utf-8") as fh:
+            json.dump(sample_records_data, fh)
+
+        # Without force_reload, cached 2 records are returned
+        assert len(service.load_records()) == 2
+
+        # With force_reload=True, new 3 records are loaded into cache
+        records_updated = service.load_records(force_reload=True)
+        assert len(records_updated) == 3
+
+    def test_stats_api_safe_error_handling(self) -> None:
+        with patch.object(
+            RetrievalService,
+            "get_stats",
+            side_effect=RetrievalDataNotFoundError("Stats records not found on /server/path"),
+        ):
+            response = client.get("/api/retrieval/stats")
+            assert response.status_code == 404
+            data = response.json()
+            assert "not found" in data["detail"].lower()
+            assert "/server/path" not in data["detail"]
+
+    def test_api_health_safe_when_unreadable_data(self, tmp_path: Path) -> None:
+        unreadable_file = tmp_path / "unreadable.json"
+        unreadable_file.write_text("invalid json", encoding="utf-8")
+        service = RetrievalService(records_path=unreadable_file)
+        health = service.get_health()
+        assert health.status == "ok"
+        assert health.retrieval_data_available is True
+        assert health.retrieval_records_count is None
+
+    def test_successful_retrieval_behavior_remains_unchanged(self) -> None:
+        # Full integration test against real dataset
+        response = client.post(
+            "/api/retrieval/query",
+            json={
+                "query": "GCP",
+                "sources": ["slack", "github"],
+                "sort_order": "desc",
+                "page": 1,
+                "page_size": 10,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        assert data["returned_count"] <= 10
+        assert data["page"] == 1
+        assert data["page_size"] == 10
+        assert len(data["results"]) == data["returned_count"]
+        # Verify provenance integrity
+        for rec in data["results"]:
+            assert rec["record_id"]
+            assert rec["source"] in ["slack", "github"]
+            assert rec["evidence"]
+            assert rec["timestamp"]
 
 
 

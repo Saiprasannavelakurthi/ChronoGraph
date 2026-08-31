@@ -4,7 +4,7 @@ src/retrieval/service.py
 Week 4 — Temporal Retrieval Service (Karkuvel's module).
 
 Orchestrates the loading, validation, filtering, and query execution for
-retrieval-ready evidence records.
+retrieval-ready evidence records with resilient error handling.
 
 Architecture
 ────────────
@@ -27,6 +27,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from config.settings import settings
+from src.retrieval.errors import (
+    RetrievalDataCorruptedError,
+    RetrievalDataError,
+    RetrievalDataFormatError,
+    RetrievalDataNotFoundError,
+    RetrievalError,
+    RetrievalServiceError,
+)
 from src.retrieval.filter import TemporalFilterEngine
 from src.retrieval.models import (
     RetrievalHealthResponse,
@@ -38,17 +46,16 @@ from src.retrieval.models import (
 
 logger = logging.getLogger(__name__)
 
-
-class RetrievalServiceError(Exception):
-    """Base exception for retrieval service failures."""
-
-
-class RetrievalDataNotFoundError(RetrievalServiceError):
-    """Raised when retrieval_ready_records.json is missing."""
-
-
-class RetrievalDataCorruptedError(RetrievalServiceError):
-    """Raised when retrieval_ready_records.json cannot be parsed."""
+# Re-export exceptions for backward compatibility
+__all__ = [
+    "RetrievalError",
+    "RetrievalServiceError",
+    "RetrievalDataError",
+    "RetrievalDataNotFoundError",
+    "RetrievalDataFormatError",
+    "RetrievalDataCorruptedError",
+    "RetrievalService",
+]
 
 
 class RetrievalService:
@@ -85,12 +92,15 @@ class RetrievalService:
         Handles missing files, empty files, corrupted JSON, and skips invalid items.
         Caches records in memory unless force_reload is True.
 
+        If reload fails, previous valid cached records are preserved.
+
         Returns:
             List[RetrievalRecord]: Validated retrieval records.
 
         Raises:
             RetrievalDataNotFoundError: If records file does not exist.
-            RetrievalDataCorruptedError: If JSON syntax is corrupted.
+            RetrievalDataFormatError: If JSON syntax or top-level structure is corrupted.
+            RetrievalServiceError: For unexpected file access errors.
         """
         if self._cached_records is not None and not force_reload:
             return self._cached_records
@@ -112,16 +122,18 @@ class RetrievalService:
                 raw_records = json.loads(raw_content)
         except json.JSONDecodeError as exc:
             logger.error("Corrupted JSON in retrieval data file %s: %s", self.records_path, exc)
-            raise RetrievalDataCorruptedError(
+            raise RetrievalDataFormatError(
                 f"Invalid JSON in retrieval records file: {exc}"
             ) from exc
+        except (RetrievalDataError, RetrievalServiceError):
+            raise
         except Exception as exc:
             logger.error("Failed to read retrieval records file %s: %s", self.records_path, exc)
             raise RetrievalServiceError(f"Error reading retrieval records: {exc}") from exc
 
         if not isinstance(raw_records, list):
             logger.error("Expected JSON list in %s, got %s", self.records_path, type(raw_records).__name__)
-            raise RetrievalDataCorruptedError(
+            raise RetrievalDataFormatError(
                 f"Expected a JSON list of records in {self.records_path}, got {type(raw_records).__name__}"
             )
 
@@ -297,25 +309,41 @@ class RetrievalService:
 
         Raises:
             RetrievalDataNotFoundError: If neither stats nor records file exists.
+            RetrievalDataFormatError: If records or stats data cannot be parsed.
+            RetrievalServiceError: On computation failure.
         """
         if self.stats_path.exists():
             try:
                 with open(self.stats_path, "r", encoding="utf-8") as fh:
-                    return json.load(fh)
+                    raw_content = fh.read().strip()
+                    if raw_content:
+                        stats_json = json.loads(raw_content)
+                        if isinstance(stats_json, dict):
+                            return stats_json
             except Exception as exc:
                 logger.warning("Failed to read stats file %s: %s; recomputing", self.stats_path, exc)
 
         # If stats file missing or unreadable, compute on-demand using records
         if not self.records_path.exists():
             raise RetrievalDataNotFoundError(
-                f"Cannot compute stats: retrieval records not found at {self.records_path}"
+                f"Cannot compute stats: retrieval records not found at '{self.records_path}'"
             )
 
         from src.retrieval.stats import RetrievalStatsEngine
 
-        engine = RetrievalStatsEngine(
-            records_path=self.records_path,
-            stats_path=self.stats_path,
-        )
-        stats = engine.compute()
-        return stats.to_dict()
+        try:
+            engine = RetrievalStatsEngine(
+                records_path=self.records_path,
+                stats_path=self.stats_path,
+            )
+            stats = engine.compute()
+            return stats.to_dict()
+        except FileNotFoundError as exc:
+            raise RetrievalDataNotFoundError(str(exc)) from exc
+        except (ValueError, json.JSONDecodeError) as exc:
+            raise RetrievalDataFormatError(f"Corrupted records during stats computation: {exc}") from exc
+        except (RetrievalDataError, RetrievalServiceError):
+            raise
+        except Exception as exc:
+            logger.error("Failed to compute stats: %s", exc)
+            raise RetrievalServiceError(f"Error computing retrieval stats: {exc}") from exc
