@@ -151,18 +151,18 @@ def validate_extraction(
         tgt_raw = str(rel.target).strip() if rel.target else ""
 
         if not src_raw:
-            errors.append(f"Relationship at index {idx} has empty or missing 'source'.")
+            errors.append(f"Relationship at index {idx} ({rel.source} -> {rel.relation} -> {rel.target}) has empty or missing 'source'.")
         if not rel.relation:
-            errors.append(f"Relationship at index {idx} has empty or missing 'relation'.")
+            errors.append(f"Relationship at index {idx} ({rel.source} -> {rel.relation} -> {rel.target}) has empty or missing 'relation'.")
         if not tgt_raw:
-            errors.append(f"Relationship at index {idx} has empty or missing 'target'.")
+            errors.append(f"Relationship at index {idx} ({rel.source} -> {rel.relation} -> {rel.target}) has empty or missing 'target'.")
 
         # Source cross-reference check
         if src_raw:
             src_key = src_raw.lower()
             if src_key not in known_references:
                 errors.append(
-                    f"Relationship source '{rel.source}' does not exist in extracted entities."
+                    f"Relationship at index {idx} ({rel.source} -> {rel.relation} -> {rel.target}): source '{rel.source}' does not exist in extracted entities."
                 )
 
         # Target cross-reference check
@@ -170,7 +170,7 @@ def validate_extraction(
             tgt_key = tgt_raw.lower()
             if tgt_key not in known_references:
                 errors.append(
-                    f"Relationship target '{rel.target}' does not exist in extracted entities."
+                    f"Relationship at index {idx} ({rel.source} -> {rel.relation} -> {rel.target}): target '{rel.target}' does not exist in extracted entities."
                 )
 
         if src_raw and rel.relation and tgt_raw:
@@ -203,18 +203,18 @@ def validate_extraction(
         obj_raw = str(triple.object).strip() if triple.object else ""
 
         if not subj_raw:
-            errors.append(f"Triple at index {idx} has empty or missing 'subject'.")
+            errors.append(f"Triple at index {idx} ({triple.subject} -> {triple.predicate} -> {triple.object}) has empty or missing 'subject'.")
         if not triple.predicate or not str(triple.predicate).strip():
-            errors.append(f"Triple at index {idx} has empty or missing 'predicate'.")
+            errors.append(f"Triple at index {idx} ({triple.subject} -> {triple.predicate} -> {triple.object}) has empty or missing 'predicate'.")
         if not obj_raw:
-            errors.append(f"Triple at index {idx} has empty or missing 'object'.")
+            errors.append(f"Triple at index {idx} ({triple.subject} -> {triple.predicate} -> {triple.object}) has empty or missing 'object'.")
 
         # Subject cross-reference check
         if subj_raw:
             subj_key = subj_raw.lower()
             if subj_key not in known_references:
                 errors.append(
-                    f"Triple subject '{triple.subject}' does not exist in extracted entities."
+                    f"Triple at index {idx} ({triple.subject} -> {triple.predicate} -> {triple.object}): subject '{triple.subject}' does not exist in extracted entities."
                 )
 
         # Object cross-reference check
@@ -222,7 +222,7 @@ def validate_extraction(
             obj_key = obj_raw.lower()
             if obj_key not in known_references:
                 errors.append(
-                    f"Triple object '{triple.object}' does not exist in extracted entities."
+                    f"Triple at index {idx} ({triple.subject} -> {triple.predicate} -> {triple.object}): object '{triple.object}' does not exist in extracted entities."
                 )
 
         if subj_raw and triple.predicate and obj_raw:

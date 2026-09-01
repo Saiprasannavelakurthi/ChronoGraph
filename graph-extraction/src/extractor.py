@@ -29,6 +29,8 @@ class GraphExtractor:
         Initialize GraphExtractor with optional custom LlamaIndex LLM or default configured LLM.
         """
         self.llm = llm or Config.get_llm()
+        # Tracks dangling edges pruned during the most recent extract() call.
+        self._last_pruned: list = []
 
     def extract(self, text: str, source: Optional[str] = None) -> GraphExtractionResult:
         """
@@ -55,8 +57,9 @@ class GraphExtractor:
 
         result = self._parse_llm_response(raw_response)
 
-        # Post-process, normalize, and deduplicate
-        processed_result = self.post_process(result)
+        # Post-process, normalize, and deduplicate; capture any pruned dangling edges.
+        self._last_pruned = []
+        processed_result = self.post_process(result, _pruned=self._last_pruned)
         return processed_result
 
     def _call_llm(self, prompt: str) -> str:
@@ -93,26 +96,22 @@ class GraphExtractor:
             return GraphExtractionResult(entities=[], relationships=[], triples=[])
 
         if not response_text.strip():
-            logger.info("LLM returned empty response text. Returning empty extraction result.")
-            return GraphExtractionResult(entities=[], relationships=[], triples=[])
+            logger.info("LLM returned empty response text.")
+            raise MalformedLLMResponseError("LLM returned empty response text.")
 
         json_str = response_text.strip()
         snippet = response_text[:300]
 
-        # Extract markdown code block ```json ... ``` if present
-        json_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", json_str, re.DOTALL)
-        if json_match:
-            json_str = json_match.group(1)
+        # Locate first '{' and last '}' to robustly extract JSON object,
+        # handling markdown wrappers or leading/trailing text.
+        start_idx = json_str.find("{")
+        end_idx = json_str.rfind("}")
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            json_str = json_str[start_idx:end_idx + 1]
         else:
-            # Locate first '{' and last '}'
-            start_idx = json_str.find("{")
-            end_idx = json_str.rfind("}")
-            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-                json_str = json_str[start_idx:end_idx + 1]
-            else:
-                error_msg = f"LLM response contains no recognizable JSON object boundaries. Response snippet: {snippet!r}"
-                logger.warning(error_msg)
-                raise MalformedLLMResponseError(error_msg)
+            error_msg = f"LLM response contains no recognizable JSON object boundaries. Response snippet: {snippet!r}"
+            logger.warning(error_msg)
+            raise MalformedLLMResponseError(error_msg)
 
         try:
             data = json.loads(json_str)
@@ -133,10 +132,17 @@ class GraphExtractor:
             logger.warning(error_msg)
             raise MalformedLLMResponseError(error_msg, original_error=val_err)
 
-    def post_process(self, result: GraphExtractionResult) -> GraphExtractionResult:
+    def post_process(
+        self,
+        result: GraphExtractionResult,
+        _pruned: Optional[list] = None,
+    ) -> GraphExtractionResult:
         """
         Public method to normalize entity names/IDs, deduplicate entities, relationships, and triples.
         Ensure missing triple objects are auto-generated from relationships.
+        
+        Dangling relationships/triples (referencing non-existent entities) are dropped with a warning
+        and recorded in the ``_pruned`` list if one is provided, so callers can surface the information.
         """
         # Deduplicate entities
         entities = deduplicate_entities(result.entities)
@@ -145,6 +151,8 @@ class GraphExtractor:
         entity_name_map = {e.name.lower(): e.name for e in entities}
         for e in entities:
             entity_name_map[e.id.lower()] = e.name
+        
+        valid_entity_names = set(entity_name_map.values())
 
         # Post-process relationships
         processed_rels = []
@@ -199,9 +207,20 @@ class GraphExtractor:
         # Preserve order while collecting unique (source, predicate, target) tuples
         unique_tuples = list(dict.fromkeys(combined_tuples))
 
+        # Filter out dangling relationships/triples to maintain graph consistency
+        consistent_tuples = []
+        for s, p, t in unique_tuples:
+            if s in valid_entity_names and t in valid_entity_names:
+                consistent_tuples.append((s, p, t))
+            else:
+                msg = f"Dangling edge dropped: ({s} -> {p} -> {t}) — one or both entities missing from extraction."
+                logger.warning(msg)
+                if _pruned is not None:
+                    _pruned.append(msg)
+
         # Build synchronized Relationships and GraphTriples matching 1-to-1
-        final_rels = [Relationship(source=s, relation=p, target=t) for (s, p, t) in unique_tuples]
-        final_triples = [GraphTriple(subject=s, predicate=p, object=t) for (s, p, t) in unique_tuples]
+        final_rels = [Relationship(source=s, relation=p, target=t) for (s, p, t) in consistent_tuples]
+        final_triples = [GraphTriple(subject=s, predicate=p, object=t) for (s, p, t) in consistent_tuples]
 
         rels = deduplicate_relationships(final_rels)
         triples = deduplicate_triples(final_triples)

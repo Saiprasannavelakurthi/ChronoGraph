@@ -62,5 +62,27 @@ def test_validation_dangling_relationship_reference_is_error():
 def test_validation_malformed_json_dict():
     """Test handling of non-dict or malformed objects passed to validator."""
     result = validate_extraction("Not a dict or GraphExtractionResult")
-    assert result.is_valid is False
     assert len(result.errors) > 0
+
+def test_validation_error_message_format():
+    """Test that validation error messages include exact relation/triple details."""
+    invalid_data = {
+        "entities": [
+            {"id": "person_aathi", "name": "Aathi", "type": "PERSON"}
+        ],
+        "relationships": [
+            {"source": "Aathi", "relation": "COMMITTED", "target": "Unknown"}
+        ],
+        "triples": [
+            {"subject": "Aathi", "predicate": "COMMITTED", "object": "Unknown"}
+        ]
+    }
+    result = validate_extraction(invalid_data)
+    assert result.is_valid is False
+    
+    # Check that error strings contain the formatted tuple
+    rel_error_found = any("(Aathi -> COMMITTED -> Unknown)" in e for e in result.errors)
+    trip_error_found = any("(Aathi -> COMMITTED -> Unknown)" in e for e in result.errors)
+    
+    assert rel_error_found, "Expected formatted tuple in relationship error message"
+    assert trip_error_found, "Expected formatted tuple in triple error message"

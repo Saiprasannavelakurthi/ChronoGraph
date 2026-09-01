@@ -240,6 +240,49 @@ def test_relationship_and_triple_synchronization(mock_llm):
     assert ("Aathi", "MERGED", "#24") in triple_tuples
 
 
+def test_empty_llm_output(mock_llm):
+    """Test that empty LLM output raises MalformedLLMResponseError."""
+    mock_llm.complete.return_value = MagicMock(text="   \n   ")
+    extractor = GraphExtractor(llm=mock_llm)
+    from src.errors import MalformedLLMResponseError
+    with pytest.raises(MalformedLLMResponseError, match="empty response"):
+        extractor.extract("Empty output")
 
+def test_markdown_wrapped_json(mock_llm):
+    """Test that JSON wrapped in markdown fences with leading/trailing text is parsed correctly."""
+    llm_text = """
+Here is your requested extraction:
+```json
+{
+    "entities": [
+        {"id": "person_alex", "name": "Alex", "type": "PERSON"}
+    ],
+    "relationships": [],
+    "triples": []
+}
+```
+Hope this helps!
+"""
+    mock_llm.complete.return_value = MagicMock(text=llm_text)
+    extractor = GraphExtractor(llm=mock_llm)
+    result = extractor.extract("Alex was here")
+    assert len(result.entities) == 1
+    assert result.entities[0].name == "Alex"
 
-
+def test_dangling_relationships_pruned(mock_llm):
+    """Test that relationships referencing non-existent entities are dropped."""
+    llm_json_response = json.dumps({
+        "entities": [
+            {"id": "person_aathi", "name": "Aathi", "type": "PERSON"}
+        ],
+        "relationships": [
+            {"source": "Aathi", "relation": "WORKED_ON", "target": "ChronoGraph"}
+        ],
+        "triples": []
+    })
+    mock_llm.complete.return_value = MagicMock(text=llm_json_response)
+    extractor = GraphExtractor(llm=mock_llm)
+    result = extractor.extract("Aathi worked on ChronoGraph")
+    assert len(result.entities) == 1
+    assert len(result.relationships) == 0
+    assert len(result.triples) == 0

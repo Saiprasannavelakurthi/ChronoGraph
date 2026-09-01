@@ -33,6 +33,7 @@ COMMIT_HASH_PATTERN = re.compile(r'^[0-9a-f]{6,40}$', re.IGNORECASE)
 JIRA_KEY_PATTERN = re.compile(r'^[A-Z0-9]+-\d+$')
 PR_ISSUE_NUM_PATTERN = re.compile(r'^#?\d+$')
 HANDLE_PATTERN = re.compile(r'^@[A-Za-z0-9_-]+$')
+REPO_PATTERN = re.compile(r'^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')
 
 # Known technical acronyms and enterprise systems to preserve in uppercase
 KNOWN_TECH_ACRONYMS: Set[str] = {
@@ -55,11 +56,12 @@ def normalize_entity_name(name: str) -> str:
 
     raw_name = name.strip()
 
-    # Preserve exact patterns: commit hashes, Jira keys, PR numbers, @handles
+    # Preserve exact patterns: commit hashes, Jira keys, PR numbers, @handles, repo names
     if (COMMIT_HASH_PATTERN.match(raw_name) or 
         JIRA_KEY_PATTERN.match(raw_name) or 
         PR_ISSUE_NUM_PATTERN.match(raw_name) or 
-        HANDLE_PATTERN.match(raw_name)):
+        HANDLE_PATTERN.match(raw_name) or
+        REPO_PATTERN.match(raw_name)):
         return raw_name
 
     # Preserve known tech acronyms and cloud platforms in uppercase
@@ -128,9 +130,12 @@ def deduplicate_entities(entities: List[Entity]) -> List[Entity]:
             if (len(entity.name) > len(existing.name) and 
                 not COMMIT_HASH_PATTERN.match(entity.name) and 
                 not JIRA_KEY_PATTERN.match(entity.name)):
+                old_id = existing.id
                 existing.name = normalize_entity_name(entity.name)
                 new_id = generate_entity_id(existing.name, type_str)
                 existing.id = new_id
+                if old_id != new_id and old_id in seen_ids:
+                    del seen_ids[old_id]
                 seen_ids[new_id] = existing
             continue
         elif entity_id in seen_ids:

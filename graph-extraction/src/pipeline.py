@@ -107,21 +107,38 @@ def process_text(
         extractor = GraphExtractor()
 
     source_val = source or (metadata.get("source") if isinstance(metadata, dict) else None)
+    
     result_model = extractor.extract(cleaned_input, source=source_val)
+    # Collect any dangling edges that were pruned during extraction.
+    pruned = list(getattr(extractor, "_last_pruned", []))
 
     # Validate extraction result
     validation = validate_extraction(result_model)
-    if not validation.is_valid:
+    
+    # Combine pruned-edge errors with structural validation errors
+    all_errors = list(validation.errors) + [
+        f"Validation error: {p}" for p in pruned
+    ]
+    combined_is_valid = validation.is_valid and not pruned
+
+    from src.validator import ValidationResult
+    combined_validation = ValidationResult(
+        is_valid=combined_is_valid,
+        errors=all_errors,
+        warnings=validation.warnings
+    )
+
+    if not combined_is_valid:
         logger.error(
-            f"Extraction validation failed with {len(validation.errors)} error(s): {validation.errors}"
+            f"Extraction validation failed with {len(all_errors)} error(s): {all_errors}"
         )
         if raise_on_validation_error:
             raise ExtractionValidationError(
-                f"Graph extraction validation failed with {len(validation.errors)} error(s).",
-                errors=validation.errors
+                f"Graph extraction validation failed with {len(all_errors)} error(s).",
+                errors=all_errors
             )
 
-    return _serialize_extraction_output(result_model, validation, metadata=metadata)
+    return _serialize_extraction_output(result_model, combined_validation, metadata=metadata)
 
 
 def process_records(
@@ -210,19 +227,34 @@ def process_records(
 
     processed_model = extractor.post_process(consolidated_model)
 
+    # Collect any dangling-edge pruning info recorded during the last post_process call.
+    pruned_batch = list(getattr(extractor, "_last_pruned", []))
+
     # Validate the consolidated extraction result
     validation = validate_extraction(processed_model)
-    if not validation.is_valid:
-        logger.error(f"Batch extraction validation failed: {validation.errors}")
+    all_errors = list(validation.errors) + [
+        f"Validation error: {p}" for p in pruned_batch
+    ]
+    combined_is_valid = validation.is_valid and not pruned_batch
+
+    from src.validator import ValidationResult
+    combined_validation = ValidationResult(
+        is_valid=combined_is_valid,
+        errors=all_errors,
+        warnings=validation.warnings
+    )
+
+    if not combined_is_valid:
+        logger.error(f"Batch extraction validation failed: {all_errors}")
         if raise_on_validation_error:
             raise ExtractionValidationError(
-                f"Batch graph extraction validation failed with {len(validation.errors)} error(s).",
-                errors=validation.errors
+                f"Batch graph extraction validation failed with {len(all_errors)} error(s).",
+                errors=all_errors
             )
 
     return _serialize_extraction_output(
         processed_model,
-        validation,
+        combined_validation,
         metadata={"records": records_metadata}
     )
 
