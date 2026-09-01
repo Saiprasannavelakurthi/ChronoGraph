@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -189,8 +190,9 @@ class RetrievalService:
         Returns:
             RetrievalQueryResponse: Complete structured response.
         """
-        # Step 1: Ensure records are loaded
+        # Step 1: Ensure records are loaded (uses in-memory cache when available)
         records = self.load_records()
+        records_loaded = len(records)
 
         # Step 2: Normalize request
         retrieval_req: RetrievalRequest
@@ -220,9 +222,11 @@ class RetrievalService:
 
         # Step 3: Apply filter engine with unlimited limit to determine total_matches
         # TemporalFilterEngine is stateless and applies source -> entity -> relation -> temporal -> sort -> limit
-        unlimited_limit = len(records) + 1
+        unlimited_limit = records_loaded + 1
         unlimited_req = retrieval_req.model_copy(update={"limit": unlimited_limit})
+        _filter_start = time.perf_counter()
         all_filtered = self.filter_engine.apply(records, unlimited_req)
+        _filter_ms = (time.perf_counter() - _filter_start) * 1000
 
         total_matches = len(all_filtered)
 
@@ -255,7 +259,10 @@ class RetrievalService:
         }
 
         logger.info(
-            "RetrievalService.query completed: %d total matches, %d returned (page=%d, page_size=%d, total_pages=%d)",
+            "RetrievalService.query completed: records_loaded=%d, filtering_ms=%.2f, "
+            "total_matches=%d, returned=%d (page=%d, page_size=%d, total_pages=%d)",
+            records_loaded,
+            _filter_ms,
             total_matches,
             returned_count,
             page,

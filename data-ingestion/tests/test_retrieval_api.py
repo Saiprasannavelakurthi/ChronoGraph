@@ -1105,7 +1105,6 @@ class TestRetrievalErrorHandlingAndResilience:
         assert health.status == "ok"
         assert health.retrieval_data_available is True
         assert health.retrieval_records_count is None
-
     def test_successful_retrieval_behavior_remains_unchanged(self) -> None:
         # Full integration test against real dataset
         response = client.post(
@@ -1133,4 +1132,416 @@ class TestRetrievalErrorHandlingAndResilience:
             assert rec["timestamp"]
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 8. Week 4 Day 5 — Performance & Cache Regression Tests
+# ─────────────────────────────────────────────────────────────────────────────
 
+
+class TestRetrievalPerformanceCacheRegression:
+    """
+    Deterministic tests proving that the in-memory cache avoids repeated
+    disk reads, that force_reload triggers exactly one additional read,
+    and that multiple different queries reuse the same cached records.
+    """
+
+    # ── File-read regression ─────────────────────────────────────────────────
+
+    def test_first_query_reads_file_once(
+        self, temp_records_file: Path, sample_records_data: List[Dict[str, Any]]
+    ) -> None:
+        """First call to load_records() must read the file exactly once."""
+        service = RetrievalService(records_path=temp_records_file)
+        assert service._cached_records is None  # nothing cached yet
+
+        read_calls: List[str] = []
+        original_open = open
+
+        def counting_open(path, *args, **kwargs):
+            read_calls.append(str(path))
+            return original_open(path, *args, **kwargs)
+
+        with patch("builtins.open", side_effect=counting_open):
+            records = service.load_records()
+
+        assert len(records) == 3
+        # Exactly one open() call that touches the records file
+        records_file_reads = [c for c in read_calls if "retrieval_ready_records" in c]
+        assert len(records_file_reads) == 1
+
+    def test_second_query_does_not_read_file(
+        self, temp_records_file: Path
+    ) -> None:
+        """After the first load, subsequent queries must NOT touch the disk."""
+        service = RetrievalService(records_path=temp_records_file)
+        # Prime the cache with the first query
+        resp1 = service.query(RetrievalQueryRequest(query="arun"))
+        assert service._cached_records is not None
+
+        # Subsequent query: patch open() so any disk access raises immediately
+        with patch("builtins.open", side_effect=RuntimeError("Disk must not be read on cache hit")):
+            resp2 = service.query(RetrievalQueryRequest(query="gcp"))
+
+        # Results must be consistent with the cached data
+        assert resp2.total_matches >= 0  # deterministic: 0 or more from 3 records
+        assert resp1.total_matches >= 0
+
+    def test_force_reload_reads_file_again(
+        self, temp_records_file: Path, sample_records_data: List[Dict[str, Any]]
+    ) -> None:
+        """force_reload=True must trigger exactly one additional file read."""
+        service = RetrievalService(records_path=temp_records_file)
+
+        # Initial load — primes cache
+        service.load_records()
+        assert service._cached_records is not None
+
+        read_calls: List[str] = []
+        original_open = open
+
+        def counting_open(path, *args, **kwargs):
+            read_calls.append(str(path))
+            return original_open(path, *args, **kwargs)
+
+        with patch("builtins.open", side_effect=counting_open):
+            reloaded = service.load_records(force_reload=True)
+
+        assert len(reloaded) == 3
+        records_file_reads = [c for c in read_calls if "retrieval_ready_records" in c]
+        assert len(records_file_reads) == 1, (
+            "force_reload=True should cause exactly one additional disk read"
+        )
+
+    # ── Multiple queries share one cache ────────────────────────────────────
+
+    def test_multiple_different_queries_use_same_cache(
+        self, temp_records_file: Path
+    ) -> None:
+        """Different queries against the same service instance must never reload from disk."""
+        service = RetrievalService(records_path=temp_records_file)
+        # Prime cache
+        service.load_records()
+        cache_id = id(service._cached_records)
+
+        queries = [
+            RetrievalQueryRequest(query="arun"),
+            RetrievalQueryRequest(entity_hints=["gcp"]),
+            RetrievalQueryRequest(relation_hints=["MIGRATED_TO"]),
+            RetrievalQueryRequest(sources=["slack"]),
+            RetrievalQueryRequest(sort_order="desc"),
+        ]
+
+        for q in queries:
+            with patch("builtins.open", side_effect=RuntimeError("Disk must not be accessed")):
+                service.query(q)
+            # Cache object identity must not change
+            assert id(service._cached_records) == cache_id
+
+    def test_three_successive_queries_same_total_matches(
+        self, temp_records_file: Path
+    ) -> None:
+        """Same query issued three times must return identical total_matches."""
+        service = RetrievalService(records_path=temp_records_file)
+        req = RetrievalQueryRequest(entity_hints=["gcp"])
+
+        r1 = service.query(req)
+        r2 = service.query(req)
+        r3 = service.query(req)
+
+        assert r1.total_matches == r2.total_matches == r3.total_matches
+        assert r1.total_matches == 2  # rec_001 and rec_003
+
+    # ── Cache behavior after invalid reload ─────────────────────────────────
+
+    def test_cache_preserved_after_failed_force_reload(
+        self, tmp_path: Path, sample_records_data: List[Dict[str, Any]]
+    ) -> None:
+        """If force_reload fails, the previously cached data must remain usable."""
+        file_path = tmp_path / "retrieval_ready_records.json"
+        with open(file_path, "w", encoding="utf-8") as fh:
+            json.dump(sample_records_data, fh)
+
+        service = RetrievalService(records_path=file_path)
+        initial = service.load_records()
+        assert len(initial) == 3
+
+        # Corrupt the file
+        file_path.write_text("{ bad json", encoding="utf-8")
+
+        with pytest.raises(RetrievalDataFormatError):
+            service.load_records(force_reload=True)
+
+        # Cache must still hold the 3 good records
+        assert service._cached_records is not None
+        assert len(service._cached_records) == 3
+
+        # Querying must succeed using cached records
+        with patch("builtins.open", side_effect=RuntimeError("Must not re-read")):
+            resp = service.query(RetrievalQueryRequest(entity_hints=["gcp"]))
+        assert resp.total_matches == 2
+
+    # ── Large result set pagination ─────────────────────────────────────────
+
+    def test_large_result_set_paginated_completely(self) -> None:
+        """Paginate through all 142 production records using page_size=20."""
+        page_size = 20
+        page = 1
+        collected_ids: List[str] = []
+        total_matches: int = -1
+
+        while True:
+            resp = client.post(
+                "/api/retrieval/query",
+                json={"page": page, "page_size": page_size},
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+
+            if total_matches == -1:
+                total_matches = data["total_matches"]
+                assert total_matches == 142
+
+            collected_ids.extend(r["record_id"] for r in data["results"])
+
+            if not data["has_next"]:
+                break
+            page += 1
+
+        assert len(collected_ids) == total_matches
+        # No duplicate record IDs across pages
+        assert len(set(collected_ids)) == total_matches
+
+    def test_large_result_single_page(self) -> None:
+        """Requesting page_size=100 returns first 100 records cleanly."""
+        resp = client.post("/api/retrieval/query", json={"page": 1, "page_size": 100})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["returned_count"] == 100
+        assert data["total_matches"] == 142
+        assert data["total_pages"] == 2
+
+    # ── Combined filters + pagination ────────────────────────────────────────
+
+    def test_entity_filter_then_pagination(self) -> None:
+        """Filter by entity then paginate; total_matches must be stable across pages."""
+        p1 = client.post(
+            "/api/retrieval/query",
+            json={"entity_hints": ["gcp"], "page": 1, "page_size": 3},
+        ).json()
+        p2 = client.post(
+            "/api/retrieval/query",
+            json={"entity_hints": ["gcp"], "page": 2, "page_size": 3},
+        ).json()
+
+        assert p1["total_matches"] == p2["total_matches"]
+        assert p1["total_matches"] > 0
+
+        p1_ids = {r["record_id"] for r in p1["results"]}
+        p2_ids = {r["record_id"] for r in p2["results"]}
+        assert p1_ids.isdisjoint(p2_ids), "Page 1 and page 2 results must be distinct"
+
+    def test_text_query_then_pagination(self) -> None:
+        """Free-text query results must paginate consistently."""
+        resp_p1 = client.post(
+            "/api/retrieval/query",
+            json={"query": "migration", "page": 1, "page_size": 5},
+        )
+        resp_p2 = client.post(
+            "/api/retrieval/query",
+            json={"query": "migration", "page": 2, "page_size": 5},
+        )
+        assert resp_p1.status_code == 200
+        assert resp_p2.status_code == 200
+
+        d1 = resp_p1.json()
+        d2 = resp_p2.json()
+
+        assert d1["total_matches"] == d2["total_matches"]
+        assert d1["returned_count"] == 5
+
+        p1_ids = {r["record_id"] for r in d1["results"]}
+        p2_ids = {r["record_id"] for r in d2["results"]}
+        assert p1_ids.isdisjoint(p2_ids)
+
+    def test_sort_desc_then_pagination(self) -> None:
+        """Descending sort must be maintained across pagination boundaries."""
+        p1 = client.post(
+            "/api/retrieval/query",
+            json={"sort_order": "desc", "page": 1, "page_size": 10},
+        ).json()
+        p2 = client.post(
+            "/api/retrieval/query",
+            json={"sort_order": "desc", "page": 2, "page_size": 10},
+        ).json()
+
+        d1 = [r["event_date"] for r in p1["results"]]
+        d2 = [r["event_date"] for r in p2["results"]]
+        assert d1 == sorted(d1, reverse=True), "Page 1 must be sorted desc"
+        assert d2 == sorted(d2, reverse=True), "Page 2 must be sorted desc"
+        # Boundary: earliest date on page 1 must be >= latest date on page 2
+        assert min(d1) >= max(d2)
+
+    def test_combined_source_entity_filter(self) -> None:
+        """Source + entity combined filter must return only matching records."""
+        resp = client.post(
+            "/api/retrieval/query",
+            json={"sources": ["github"], "entity_hints": ["gcp"]},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        for r in data["results"]:
+            assert r["source"] == "github"
+            assert "gcp" in r["subject"].lower() or "gcp" in r["object"].lower()
+
+    def test_combined_source_relation_filter(self) -> None:
+        """Source + relation combined filter must honour both constraints."""
+        resp = client.post(
+            "/api/retrieval/query",
+            json={"sources": ["jira"], "relation_hints": ["RAISED_CONCERN"]},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        for r in data["results"]:
+            assert r["source"] == "jira"
+            assert r["relation"] == "RAISED_CONCERN"
+
+    def test_combined_query_source_temporal(self) -> None:
+        """Free-text + source + temporal combined filter."""
+        resp = client.post(
+            "/api/retrieval/query",
+            json={
+                "query": "gcp",
+                "sources": ["slack"],
+                "after_date": "2023-03-01",
+                "page": 1,
+                "page_size": 10,
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        for r in data["results"]:
+            assert r["source"] == "slack"
+            assert r["event_date"] > "2023-03-01"
+            assert r["relevance_score"] is not None
+
+    # ── API success after previous error scenario ────────────────────────────
+
+    def test_api_recovers_after_simulated_error(self) -> None:
+        """After a simulated error response, the API must serve valid requests correctly."""
+        # Simulate an error first
+        with patch.object(
+            RetrievalService,
+            "query",
+            side_effect=RetrievalDataNotFoundError("simulated"),
+        ):
+            err_resp = client.post("/api/retrieval/query", json={})
+            assert err_resp.status_code == 404
+
+        # Normal query must succeed immediately after
+        ok_resp = client.post("/api/retrieval/query", json={"limit": 5})
+        assert ok_resp.status_code == 200
+        data = ok_resp.json()
+        assert data["total_matches"] > 0
+        assert data["returned_count"] == 5
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 9. Week 4 Day 5 — API Endpoint Regression Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestApiRetrievalRegression:
+    """Verify that all existing endpoints continue to behave correctly after Day 5 changes."""
+
+    def test_health_endpoint_still_returns_ok(self) -> None:
+        resp = client.get("/api/health")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert data["service"] == "ChronoGraph Retrieval API"
+        assert data["version"] == "1.0.0"
+        assert "retrieval_data_available" in data
+
+    def test_stats_endpoint_still_returns_data(self) -> None:
+        resp = client.get("/api/retrieval/stats")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_records"] == 142
+        assert "source_breakdown" in data
+
+    def test_normal_query_regression(self) -> None:
+        resp = client.post("/api/retrieval/query", json={"limit": 10})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_matches"] == 142
+        assert data["returned_count"] == 10
+        assert len(data["results"]) == 10
+
+    def test_paginated_query_regression(self) -> None:
+        resp = client.post("/api/retrieval/query", json={"page": 3, "page_size": 10})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["page"] == 3
+        assert data["returned_count"] == 10
+        assert data["has_previous"] is True
+
+    def test_free_text_query_regression(self) -> None:
+        resp = client.post("/api/retrieval/query", json={"query": "migration", "limit": 5})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_matches"] > 0
+        for r in data["results"]:
+            assert r["relevance_score"] is not None
+
+    def test_temporal_query_regression(self) -> None:
+        resp = client.post(
+            "/api/retrieval/query",
+            json={"start_date": "2023-03-01", "end_date": "2023-06-30", "limit": 20},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_matches"] > 0
+        for r in data["results"]:
+            assert "2023-03-01" <= r["event_date"] <= "2023-06-30"
+
+    def test_combined_query_regression(self) -> None:
+        resp = client.post(
+            "/api/retrieval/query",
+            json={
+                "query": "gcp",
+                "entity_hints": ["gcp"],
+                "sources": ["slack", "github"],
+                "sort_order": "desc",
+                "page": 1,
+                "page_size": 5,
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_matches"] > 0
+        assert data["page"] == 1
+        assert data["page_size"] == 5
+
+    def test_error_response_regression(self) -> None:
+        # 422 on invalid input
+        resp = client.post("/api/retrieval/query", json={"page": -1})
+        assert resp.status_code == 422
+
+        # 404 on missing data
+        with patch.object(
+            RetrievalService,
+            "query",
+            side_effect=RetrievalDataNotFoundError("missing"),
+        ):
+            resp = client.post("/api/retrieval/query", json={})
+            assert resp.status_code == 404
+            assert "not found" in resp.json()["detail"].lower()
+
+        # 500 on corrupted data
+        with patch.object(
+            RetrievalService,
+            "query",
+            side_effect=RetrievalDataFormatError("bad json"),
+        ):
+            resp = client.post("/api/retrieval/query", json={})
+            assert resp.status_code == 500
+            assert "corrupted" in resp.json()["detail"].lower()
