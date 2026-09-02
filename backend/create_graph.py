@@ -39,6 +39,24 @@ def create_basic_graph():
         print("Basic ChronoGraph created successfully (with timestamps)!")
 
 
+def _normalize_display_name(raw_name, display_name):
+    """
+    Matches the normalization applied in temporal_router.py so that
+    node names created here are searchable by the exact strings the
+    router extracts from natural-language questions.
+
+    The ingestion pipeline title-cases most entity types (e.g.
+    "PostgreSQL", "GCP") but leaves Person display names as raw
+    underscored slugs (e.g. "arun_sharma"). Without this fix, the
+    router would search for "Arun Sharma" while the graph node is
+    named "arun_sharma" — an exact-match Cypher query would silently
+    return zero results.
+    """
+    if display_name == raw_name and "_" in display_name:
+        return display_name.replace("_", " ").title()
+    return display_name
+
+
 def load_graph_ready_triples(file_path=None):
     """
     Ingests graph-ready triples (from Karkuvel's data-ingestion pipeline)
@@ -66,8 +84,10 @@ def load_graph_ready_triples(file_path=None):
     with driver.session(database=DATABASE) as session:
         for t in triples:
             sub = t.get("subject_display") or t.get("subject", "Unknown")
+            sub = _normalize_display_name(t.get("subject", sub), sub)
             sub_type = t.get("subject_type") or "Entity"
             obj = t.get("object_display") or t.get("object", "Unknown")
+            obj = _normalize_display_name(t.get("object", obj), obj)
             obj_type = t.get("object_type") or "Entity"
             rel = t.get("relation", "RELATED_TO").replace(" ", "_").upper()
             ts = t.get("timestamp")
@@ -109,4 +129,3 @@ if __name__ == "__main__":
         print(f"Neo4j graph loading skipped: {exc}")
     finally:
         driver.close()
-
