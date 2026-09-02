@@ -3,7 +3,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Neo4j](https://img.shields.io/badge/Neo4j-5.20%2B-008CC1.svg)](https://neo4j.com/)
 [![Neo4j Aura](https://img.shields.io/badge/Neo4j-Aura-4581C3.svg)](https://neo4j.com/cloud/platform/aura-graph-database/)
-[![Tests](https://img.shields.io/badge/tests-26%20passed-brightgreen.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/tests-29%20passed-brightgreen.svg)](https://docs.pytest.org/)
 
 **ChronoGraph** is a Temporal GraphRAG pipeline engineered for enterprise forensics. This module — **`neo4j-temporal`** — is the graph storage and temporal retrieval layer. It ingests the graph-ready triples produced by the data-ingestion module, stores them in **Neo4j** as a time-aware knowledge graph with `triple_id`-preserved relationships, and exposes a **natural-language query router** that converts plain-English historical questions into parameterized Cypher.
 
@@ -77,7 +77,7 @@ neo4j-temporal/
 │
 ├── backend/
 │   ├── neo4j_connection.py       # Neo4j Aura driver connection + pool tuning + smart browser launch
-│   ├── create_graph.py           # Loads real triples (or demo fallback) into Neo4j
+│   ├── create_graph.py           # Loads real triples (or demo fallback); node names match router extraction
 │   ├── temporal_queries.py       # Canned temporal Cypher queries
 │   ├── temporal_router.py        # NL question → intent → entity → Cypher → execute
 │   ├── optimize_graph.py         # Week 4: auto-creates indexes/constraints for query performance
@@ -87,10 +87,11 @@ neo4j-temporal/
 │   └── temporal_queries.json     # Query intent → Cypher templates
 │
 └── tests/
-    ├── test_temporal_queries.py       # Intent detection, entity/date extraction, query building
-    ├── test_temporal_preservation.py  # Verifies all 142 real triples preserved via triple_id
-    ├── test_real_entity_extraction.py # Verifies detection against real ingestion data
-    └── test_optimize_graph.py         # Verifies index/constraint generation logic (offline, no DB needed)
+    ├── test_temporal_queries.py         # Intent detection, entity/date extraction, query building
+    ├── test_temporal_preservation.py    # Verifies all 142 real triples preserved via triple_id
+    ├── test_real_entity_extraction.py   # Verifies detection against real ingestion data
+    ├── test_optimize_graph.py           # Verifies index/constraint generation logic (offline, no DB needed)
+    └── test_node_name_consistency.py    # Verifies graph node names match router-extracted names exactly
 ```
 
 ---
@@ -125,6 +126,7 @@ neo4j-temporal/
 - **Connection Pool Tuning** (`neo4j_connection.py`): Replaced the untuned default driver with explicit `max_connection_pool_size`, `connection_acquisition_timeout`, `max_connection_lifetime`, and `keep_alive` settings — matters once multiple consumers (this router, the chat UI, concurrent test runs) share the same Aura instance.
 - **Benchmark Suite** (`benchmark_queries.py`): Times all 5 real query functions (`get_all_events`, `get_events_after`, `get_person_history`, `get_events_between`, `get_technology_history`) against the live Aura instance and reports min/avg/max latency in milliseconds. `--profile` mode prints Neo4j's actual query execution plan (`PROFILE`) so you can visually confirm `AllNodesScan` → `NodeIndexSeek` after optimization.
 - **Offline-Safe Optimization Tests** (`test_optimize_graph.py`): Verifies index/constraint-naming logic using a fake session object — no live database connection required, consistent with how the rest of this suite handles external dependencies.
+- **Node-Name Consistency Fix (bug found via cross-module review)**: Cross-checking against Karkuvel's newly published `GRAPH_DATA_CONTRACT.md` surfaced a real, previously-silent bug — `create_graph.py` stored Person nodes under their raw ingestion slug (e.g. `"arun_sharma"`), while `temporal_router.py`'s entity extraction searched using the normalized display form (`"Arun Sharma"`). Since `person_history`'s Cypher does an **exact match** (`MATCH (a:Person {name: $person})`), every real person query silently returned zero rows — nothing in the existing test suite caught this, since those tests check extraction logic and triple counts in isolation, not whether the two systems agree with each other. Fixed by applying the same `_normalize_display_name()` logic in `create_graph.py` that the router already used, and added `test_node_name_consistency.py` to guard against this regressing.
 
 ---
 
@@ -203,8 +205,8 @@ ChronoGraph-project/
 
 | Scenario | Test Result |
 |---|---|
-| `data-ingestion/` present | **26 passed** — full real-data + optimization coverage |
-| `data-ingestion/` absent | **19 passed**, 2 failed (`test_temporal_preservation.py`), 5 skipped (`test_real_entity_extraction.py`) |
+| `data-ingestion/` present | **29 passed** — full real-data + optimization + consistency coverage |
+| `data-ingestion/` absent | **22 passed**, 2 failed (`test_temporal_preservation.py`), 5 skipped (`test_real_entity_extraction.py`) |
 
 To pull the latest ingestion output from the `data-ingestion` branch:
 ```bash
@@ -330,6 +332,12 @@ python backend/benchmark_queries.py --profile
 
 > Relationship-property uniqueness constraints require Neo4j Enterprise / Aura Professional+. On lower tiers, `optimize_graph.py` prints a warning and continues — indexes (the main performance win) still get created either way.
 
+> **If you loaded data before the Week 4 node-naming fix**, your graph may contain stale Person nodes under the old raw-slug naming. Clear it once before reloading:
+> ```powershell
+> python -c "from backend.neo4j_connection import driver, DATABASE; s = driver.session(database=DATABASE); s.run('MATCH (n) DETACH DELETE n'); s.close(); print('Graph cleared.')"
+> python backend/create_graph.py
+> ```
+
 **Connection pooling** (`neo4j_connection.py`) is also tuned for repeated queries: `max_connection_pool_size=50`, `connection_acquisition_timeout=30s`, `max_connection_lifetime=3600s`, `keep_alive=True` — important once this router, the chat UI, and test runs all share the same Aura instance concurrently.
 
 ---
@@ -342,11 +350,12 @@ pytest -q
 ```
 
 ### Verified Test Status
-**26 passed** across 4 test modules:
+**29 passed** across 5 test modules:
 - `tests/test_temporal_queries.py` — intent detection, entity/date extraction, Cypher query building (Week 3)
 - `tests/test_temporal_preservation.py` — verifies all 142 real triples generate distinct, `triple_id`-preserved relationships
 - `tests/test_real_entity_extraction.py` — verifies detection works against real people and entities from the ingestion data, with graceful skip if that data is unavailable
 - `tests/test_optimize_graph.py` — verifies index/constraint-naming logic for `optimize_graph.py` using a fake session (no live database required)
+- `tests/test_node_name_consistency.py` — verifies `create_graph.py`'s node naming exactly matches what `temporal_router.py` searches for, guarding against the silent zero-result bug found during Week 4 review
 
 ---
 
@@ -364,13 +373,14 @@ pytest -q
 - **After real-data integration:** 2 demo names + all real entities from the ingestion data recognized dynamically, with natural display-name formatting
 
 ### Test Suite
-- **16 → 21 → 26 tests** (Week 3 added `test_real_entity_extraction.py`; Week 4 added `test_optimize_graph.py`)
-- **26 / 26 passing** with `data-ingestion/` present
+- **16 → 21 → 26 → 29 tests** (Week 3 added `test_real_entity_extraction.py`; Week 4 added `test_optimize_graph.py` and `test_node_name_consistency.py`)
+- **29 / 29 passing** with `data-ingestion/` present
 
 ### Performance (Week 4)
 - **Indexes:** 1 per node label + 1 per relationship type, auto-generated to match the live graph schema
 - **Constraints:** `triple_id` uniqueness enforced per relationship type (Aura tier permitting)
 - **Benchmarked queries:** all 5 real query functions (`get_all_events`, `get_events_after`, `get_person_history`, `get_events_between`, `get_technology_history`) via `benchmark_queries.py`, run 5× each with min/avg/max latency reported
+- **Bug fixed:** node-name/router-extraction mismatch that would have silently zeroed out all `person_history` query results in production — found via cross-referencing the newly published `GRAPH_DATA_CONTRACT.md`, fixed, and now covered by a dedicated regression test
 
 ---
 
