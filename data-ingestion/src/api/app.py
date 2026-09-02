@@ -155,7 +155,7 @@ async def health() -> HealthResponse:
         status="ok",
         version="1.0.0",
         llm_provider=settings.llm_provider,
-        data_dir=str(settings.raw_data_dir),
+        data_dir="<configured>",  # intentionally omitted to avoid leaking filesystem paths
     )
 
 

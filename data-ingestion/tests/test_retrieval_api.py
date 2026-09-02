@@ -1545,3 +1545,347 @@ class TestApiRetrievalRegression:
             resp = client.post("/api/retrieval/query", json={})
             assert resp.status_code == 500
             assert "corrupted" in resp.json()["detail"].lower()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 10. Week 4 Day 6 — Security & Input Validation Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestApiSecurityAndInputValidation:
+    """
+    Security and input validation tests for Week 4 Day 6.
+
+    Verifies that:
+    - Oversized / malformed inputs are rejected with HTTP 422.
+    - Valid requests continue to succeed (backward compatibility).
+    - API responses never expose internal implementation details,
+      environment variables, API keys, local filesystem paths,
+      or Python tracebacks.
+    - Free-text query strings are treated purely as data (not
+      constructed into SQL, Cypher, shell commands, or file paths).
+    """
+
+    # ── Query length validation ────────────────────────────────────────────
+
+    def test_valid_query_length_accepted(self) -> None:
+        """A query at the maximum allowed length (2000 chars) must be accepted."""
+        long_query = "a" * 2000
+        response = client.post("/api/retrieval/query", json={"query": long_query})
+        assert response.status_code == 200
+
+    def test_oversized_query_rejected_422(self) -> None:
+        """A query exceeding 2000 characters must be rejected with HTTP 422."""
+        oversized_query = "a" * 2001
+        response = client.post("/api/retrieval/query", json={"query": oversized_query})
+        assert response.status_code == 422
+
+    def test_oversized_query_text_rejected_422(self) -> None:
+        """query_text alias exceeding 2000 characters must also be rejected."""
+        oversized_query = "x" * 2001
+        response = client.post("/api/retrieval/query", json={"query_text": oversized_query})
+        assert response.status_code == 422
+
+    # ── Entity hints count validation ────────────────────────────────────
+
+    def test_valid_entity_hints_count_accepted(self) -> None:
+        """Exactly 50 entity hints (the maximum) must be accepted."""
+        hints = [f"entity_{i}" for i in range(50)]
+        response = client.post("/api/retrieval/query", json={"entity_hints": hints})
+        assert response.status_code == 200
+
+    def test_too_many_entity_hints_rejected_422(self) -> None:
+        """More than 50 entity hints must be rejected with HTTP 422."""
+        hints = [f"entity_{i}" for i in range(51)]
+        response = client.post("/api/retrieval/query", json={"entity_hints": hints})
+        assert response.status_code == 422
+
+    def test_too_many_entities_alias_rejected_422(self) -> None:
+        """More than 50 items in the 'entities' alias must also be rejected."""
+        hints = [f"entity_{i}" for i in range(51)]
+        response = client.post("/api/retrieval/query", json={"entities": hints})
+        assert response.status_code == 422
+
+    # ── Relation hints count validation ──────────────────────────────────
+
+    def test_valid_relation_hints_count_accepted(self) -> None:
+        """Exactly 50 relation hints (the maximum) must be accepted."""
+        hints = [f"RELATION_{i}" for i in range(50)]
+        response = client.post("/api/retrieval/query", json={"relation_hints": hints})
+        assert response.status_code == 200
+
+    def test_too_many_relation_hints_rejected_422(self) -> None:
+        """More than 50 relation hints must be rejected with HTTP 422."""
+        hints = [f"RELATION_{i}" for i in range(51)]
+        response = client.post("/api/retrieval/query", json={"relation_hints": hints})
+        assert response.status_code == 422
+
+    # ── Source validation ─────────────────────────────────────────────────
+
+    def test_valid_sources_accepted(self) -> None:
+        """All valid source values (slack, github, jira) must be accepted."""
+        for source in ("slack", "github", "jira"):
+            response = client.post("/api/retrieval/query", json={"sources": [source]})
+            assert response.status_code == 200, f"Expected 200 for source={source!r}"
+
+    def test_invalid_source_rejected_422(self) -> None:
+        """An unrecognised source value must be rejected with HTTP 422."""
+        response = client.post("/api/retrieval/query", json={"sources": ["twitter"]})
+        assert response.status_code == 422
+
+    def test_mixed_valid_invalid_source_rejected_422(self) -> None:
+        """A list containing any invalid source must be rejected."""
+        response = client.post("/api/retrieval/query", json={"sources": ["slack", "invalid"]})
+        assert response.status_code == 422
+
+    def test_empty_string_source_not_500(self) -> None:
+        """An empty string in sources list must not cause a 500 error."""
+        response = client.post("/api/retrieval/query", json={"sources": [""]})
+        assert response.status_code in (200, 422)
+        assert response.status_code != 500
+
+    # ── Page / page_size / limit validation ──────────────────────────────
+
+    def test_invalid_page_zero_rejected_422(self) -> None:
+        """page=0 must be rejected."""
+        response = client.post("/api/retrieval/query", json={"page": 0})
+        assert response.status_code == 422
+
+    def test_invalid_page_negative_rejected_422(self) -> None:
+        """Negative page numbers must be rejected."""
+        response = client.post("/api/retrieval/query", json={"page": -10})
+        assert response.status_code == 422
+
+    def test_invalid_page_too_large_rejected_422(self) -> None:
+        """page > 9999 must be rejected."""
+        response = client.post("/api/retrieval/query", json={"page": 10000})
+        assert response.status_code == 422
+
+    def test_valid_max_page_accepted(self) -> None:
+        """page=9999 (the maximum allowed) must be accepted (returns empty results)."""
+        response = client.post("/api/retrieval/query", json={"page": 9999, "page_size": 10})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["page"] == 9999
+        assert data["returned_count"] == 0
+
+    def test_invalid_page_size_zero_rejected_422(self) -> None:
+        """page_size=0 must be rejected."""
+        response = client.post("/api/retrieval/query", json={"page_size": 0})
+        assert response.status_code == 422
+
+    def test_invalid_page_size_too_large_rejected_422(self) -> None:
+        """page_size > 100 must be rejected."""
+        response = client.post("/api/retrieval/query", json={"page_size": 101})
+        assert response.status_code == 422
+
+    def test_invalid_limit_zero_rejected_422(self) -> None:
+        """limit=0 must be rejected."""
+        response = client.post("/api/retrieval/query", json={"limit": 0})
+        assert response.status_code == 422
+
+    def test_invalid_limit_negative_rejected_422(self) -> None:
+        """Negative limit must be rejected."""
+        response = client.post("/api/retrieval/query", json={"limit": -5})
+        assert response.status_code == 422
+
+    def test_invalid_limit_too_large_rejected_422(self) -> None:
+        """limit > 1000 must be rejected."""
+        response = client.post("/api/retrieval/query", json={"limit": 1001})
+        assert response.status_code == 422
+
+    # ── Date validation ───────────────────────────────────────────────────
+
+    def test_malformed_date_rejected_422(self) -> None:
+        """A malformed date string must be rejected with HTTP 422."""
+        response = client.post("/api/retrieval/query", json={"exact_date": "not-a-date"})
+        assert response.status_code == 422
+
+    def test_malformed_start_date_rejected_422(self) -> None:
+        """A malformed start_date must be rejected."""
+        response = client.post("/api/retrieval/query", json={"start_date": "2023/01/01"})
+        assert response.status_code == 422
+
+    def test_inverted_date_range_rejected_422(self) -> None:
+        """start_date > end_date must be rejected with HTTP 422."""
+        response = client.post(
+            "/api/retrieval/query",
+            json={"start_date": "2023-12-01", "end_date": "2023-01-01"},
+        )
+        assert response.status_code == 422
+
+    # ── Text input safety ─────────────────────────────────────────────────
+
+    def test_special_characters_in_query_handled_safely(self) -> None:
+        """
+        Queries containing SQL/Cypher injection-like patterns must be treated
+        as literal search strings and return a valid (possibly empty) response.
+        The API must never return 500 for these inputs.
+        """
+        dangerous_inputs = [
+            "'; DROP TABLE records; --",
+            "MATCH (n) DETACH DELETE n",
+            "$(rm -rf /)",
+            "<script>alert('xss')</script>",
+            "../../etc/passwd",
+            "' OR '1'='1",
+            "{$gt: ''}",
+        ]
+        for payload in dangerous_inputs:
+            response = client.post("/api/retrieval/query", json={"query": payload})
+            assert response.status_code == 200, (
+                f"Expected 200 for injection-like query {payload!r}, "
+                f"got {response.status_code}"
+            )
+            data = response.json()
+            assert "total_matches" in data
+            assert "results" in data
+
+    def test_very_long_query_at_boundary_accepted(self) -> None:
+        """A query of exactly 2000 characters returns 200 (possibly 0 matches)."""
+        boundary_query = ("migration " * 200)[:2000]
+        response = client.post("/api/retrieval/query", json={"query": boundary_query})
+        assert response.status_code == 200
+
+    def test_unicode_query_handled_safely(self) -> None:
+        """Unicode characters in the query must be handled without errors."""
+        response = client.post(
+            "/api/retrieval/query", json={"query": "GCP migration \u79fb\u884c \u03b1\u03b2\u03b3"}
+        )
+        assert response.status_code == 200
+
+    # ── Response safety ────────────────────────────────────────────────────
+
+    def test_api_does_not_expose_internal_exception_details(self) -> None:
+        """
+        When an unexpected RuntimeError occurs, the API must NOT expose the raw
+        exception message (which may contain credentials or internal paths).
+        """
+        secret_message = "postgres://admin:SuperSecretPass@internal-db:5432/prod"
+        with patch.object(
+            RetrievalService,
+            "query",
+            side_effect=RuntimeError(secret_message),
+        ):
+            response = client.post("/api/retrieval/query", json={"query": "test"})
+            assert response.status_code == 500
+            body = response.json()
+            assert "detail" in body
+            assert "SuperSecretPass" not in body["detail"]
+            assert "postgres://" not in body["detail"]
+            assert "internal-db" not in body["detail"]
+            assert body["detail"] == "Internal server error occurred while processing retrieval query."
+
+    def test_api_does_not_expose_traceback_on_500(self) -> None:
+        """HTTP 500 responses must never contain Python traceback text."""
+        with patch.object(
+            RetrievalService,
+            "query",
+            side_effect=RetrievalServiceError("unexpected failure"),
+        ):
+            response = client.post("/api/retrieval/query", json={})
+            assert response.status_code == 500
+            body_text = response.text
+            assert "Traceback" not in body_text
+            assert 'File "' not in body_text
+
+    def test_api_does_not_expose_environment_variables(self) -> None:
+        """
+        API responses must not echo back environment variable values.
+        """
+        import os
+        env_key = "TEST_FAKE_SECRET_DO_NOT_LEAK"
+        os.environ[env_key] = "secret-value-that-must-not-appear"
+        try:
+            with patch.object(
+                RetrievalService,
+                "query",
+                side_effect=RuntimeError(f"Failed. Token={os.environ[env_key]}"),
+            ):
+                response = client.post("/api/retrieval/query", json={})
+                assert response.status_code == 500
+                assert "secret-value-that-must-not-appear" not in response.text
+                assert env_key not in response.text
+        finally:
+            os.environ.pop(env_key, None)
+
+    def test_api_does_not_expose_filesystem_path_in_404(self) -> None:
+        """404 error responses must not include local filesystem paths."""
+        with patch.object(
+            RetrievalService,
+            "query",
+            side_effect=RetrievalDataNotFoundError(
+                "File not found at /home/internalprod/data/secret/records.json"
+            ),
+        ):
+            response = client.post("/api/retrieval/query", json={})
+            assert response.status_code == 404
+            body = response.json()
+            assert "/home/internalprod" not in body["detail"]
+            assert "secret" not in body["detail"]
+            assert "not found" in body["detail"].lower()
+
+    def test_legacy_health_endpoint_does_not_expose_filesystem_path(self) -> None:
+        """GET /api/v1/health must not expose real local filesystem paths."""
+        response = client.get("/api/v1/health")
+        assert response.status_code == 200
+        data = response.json()
+        # data_dir must be the safe generic label
+        assert data["data_dir"] == "<configured>"
+
+    # ── Backward compatibility (existing successful requests unchanged) ────
+
+    def test_existing_successful_query_unchanged(self) -> None:
+        """A normal valid query must still return 200 with full provenance fields."""
+        response = client.post(
+            "/api/retrieval/query",
+            json={
+                "query": "GCP migration",
+                "sources": ["slack", "github"],
+                "sort_order": "asc",
+                "page": 1,
+                "page_size": 10,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        assert "results" in data
+        assert "applied_filters" in data
+        assert "generated_at" in data
+        for r in data["results"]:
+            assert r["record_id"]
+            assert r["evidence"]
+            assert r["source"] in ("slack", "github")
+
+    def test_existing_pagination_query_unchanged(self) -> None:
+        """Pagination with page/page_size must remain fully functional."""
+        response = client.post(
+            "/api/retrieval/query", json={"page": 2, "page_size": 5}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["page"] == 2
+        assert data["page_size"] == 5
+        assert data["returned_count"] == 5
+
+    def test_existing_temporal_filter_query_unchanged(self) -> None:
+        """Temporal date filtering must remain fully functional."""
+        response = client.post(
+            "/api/retrieval/query",
+            json={"start_date": "2023-03-01", "end_date": "2023-06-30"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        for r in data["results"]:
+            assert "2023-03-01" <= r["event_date"] <= "2023-06-30"
+
+    def test_existing_invalid_input_still_returns_422(self) -> None:
+        """Previously failing inputs must continue to return 422."""
+        assert client.post("/api/retrieval/query", json={"sources": ["unknown_source"]}).status_code == 422
+        assert client.post("/api/retrieval/query", json={"page": 0}).status_code == 422
+        assert client.post(
+            "/api/retrieval/query",
+            json={"start_date": "2023-06-01", "end_date": "2023-01-01"},
+        ).status_code == 422

@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![LlamaIndex](https://img.shields.io/badge/LlamaIndex-0.10%2B-purple.svg)](https://www.llamaindex.ai/)
 [![Groq LLM](https://img.shields.io/badge/Groq-llama--3.1--8b--instant-orange.svg)](https://groq.com/)
-[![Tests](https://img.shields.io/badge/tests-520%20passed-brightgreen.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/tests-558%20passed-brightgreen.svg)](https://docs.pytest.org/)
 
 **ChronoGraph** is a Temporal GraphRAG pipeline engineered for enterprise forensics, knowledge graph extraction, and cross-platform communication analytics. It ingests unstructured developer communications (Slack messages, GitHub PRs/issues, Jira tickets), extracts temporal entity-relationship triples using LlamaIndex & Groq LLMs (with robust heuristic fallbacks), validates and normalizes entities/relations, deduplicates records, prepares citation-ready chronological retrieval evidence records, and exposes a high-performance REST Retrieval Query API for downstream Temporal Routing and GraphRAG answer generation.
 
@@ -234,6 +234,14 @@ data-ingestion/
   - `GET /api/health` — Health check reporting service status, data availability on disk, and total record count.
   - `POST /api/retrieval/query` — Flexible temporal retrieval endpoint accepting natural language queries, entity hints, relation labels, source filters, date ranges/bounds, sorting, and pagination with full provenance.
   - `GET /api/retrieval/stats` — Retrieval quality and coverage statistics.
+- **API Security & Input Validation (Day 6)**:
+  - **Query length limit**: `query` / `query_text` capped at 2 000 characters.
+  - **List size limits**: `entity_hints`, `entities`, `relation_hints` each capped at 50 items.
+  - **Source allowlist**: Only `"slack"`, `"github"`, `"jira"` accepted; unknown values return HTTP 422.
+  - **Numeric bounds**: `page` bounded 1–9 999, `page_size` 1–100, `limit` 1–1 000.
+  - **Date validation**: Malformed date strings and inverted date ranges return HTTP 422.
+  - **Text input safety**: Query strings treated purely as data — never interpolated into SQL, Cypher, shell commands, or filesystem paths.
+  - **Response safety**: Error responses never expose filesystem paths, environment variables, API keys, or Python tracebacks.
 - **CLI Integration**: FastAPI server startup via `python main.py --start-api` or `python main.py --serve-api`.
 - **API Contract**: Full REST / OpenAPI specification in [`docs/RETRIEVAL_API_CONTRACT.md`](docs/RETRIEVAL_API_CONTRACT.md).
 
@@ -263,10 +271,16 @@ data-ingestion/
    - **Multi-Filter Support**: Combined entity, relation, source system, and chronological boundary filters.
    - **FastAPI Validation**: Strict request schema validation with Pydantic.
    - **Zero Knowledge Loss**: Preserves complete evidence strings, timestamps, and source URLs in every query response.
-6. **Production-Ready Operations**
+6. **API Security & Input Validation (Week 4 Day 6)**
+   - **Request size limits**: Query strings capped at 2 000 chars; hint lists capped at 50 items each.
+   - **Source allowlist enforcement**: Only `slack`, `github`, and `jira` are accepted; invalid values return HTTP 422.
+   - **Numeric bounds**: `page` (1–9 999), `page_size` (1–100), `limit` (1–1 000) all validated by Pydantic.
+   - **Text input safety**: Free-text queries are data-only — never interpolated into queries, commands, or paths.
+   - **Response safety**: Errors return sanitised messages only; no tracebacks, paths, or secrets are exposed.
+7. **Production-Ready Operations**
    - **FastAPI** application for HTTP-triggered ingestion, extraction, and temporal retrieval queries.
    - **Apache Airflow DAG** (`chronograph_ingestion_dag.py`) for enterprise pipeline scheduling.
-   - **Comprehensive Test Suite**: 457 passing pytest unit and integration tests.
+   - **Comprehensive Test Suite**: 558 passing pytest unit and integration tests.
 
 ---
 

@@ -536,27 +536,44 @@ class RetrievalQueryRequest(BaseModel):
 
     Provides a clean, intuitive REST API interface that is normalized
     into the existing Week 3 RetrievalRequest before filtering.
+
+    Input Validation Limits (Week 4 Day 6)
+    ───────────────────────────────────────
+    - query / query_text : max 2 000 characters
+    - entity_hints        : max 50 items
+    - entities           : max 50 items
+    - relation_hints     : max 50 items
+    - sources            : only 'slack', 'github', 'jira'
+    - limit              : 1 – 1 000
+    - page               : 1 – 9 999
+    - page_size          : 1 – 100
+    - date fields        : must be valid YYYY-MM-DD; start_date ≤ end_date
     """
 
     query: Optional[str] = Field(
         default=None,
-        description="Natural-language question or search query string.",
+        max_length=2000,
+        description="Natural-language question or search query string (max 2000 characters).",
     )
     query_text: Optional[str] = Field(
         default=None,
-        description="Alias for query.",
+        max_length=2000,
+        description="Alias for query (max 2000 characters).",
     )
     entity_hints: List[str] = Field(
         default_factory=list,
-        description="Entity names or hints to filter by (canonical snake_case or display name).",
+        max_length=50,
+        description="Entity names or hints to filter by (max 50 items, canonical snake_case or display name).",
     )
     entities: List[str] = Field(
         default_factory=list,
-        description="Alias for entity_hints.",
+        max_length=50,
+        description="Alias for entity_hints (max 50 items).",
     )
     relation_hints: List[str] = Field(
         default_factory=list,
-        description="Relation labels to filter by (UPPER_SNAKE_CASE preferred).",
+        max_length=50,
+        description="Relation labels to filter by (max 50 items, UPPER_SNAKE_CASE preferred).",
     )
     sources: List[str] = Field(
         default_factory=list,
@@ -595,7 +612,8 @@ class RetrievalQueryRequest(BaseModel):
     page: int = Field(
         default=1,
         ge=1,
-        description="Page number for pagination (1-indexed, default=1).",
+        le=9999,
+        description="Page number for pagination (1-9999, default=1).",
     )
     page_size: Optional[int] = Field(
         default=None,

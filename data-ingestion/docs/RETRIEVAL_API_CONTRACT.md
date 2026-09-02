@@ -266,3 +266,59 @@ The ChronoGraph Retrieval API enforces secure, consistent error handling without
 2. **Partial Corruption Tolerance**: If individual records in `retrieval_ready_records.json` are malformed or missing required fields, they are logged as warnings and skipped, allowing all valid records to load successfully.
 3. **Empty File Safety**: An empty `retrieval_ready_records.json` is treated cleanly as zero records (`[]`) without throwing unhandled exceptions.
 4. **Information Security**: Error responses never include Python tracebacks, database URIs, local filesystem directory structures, or API tokens.
+
+---
+
+## 7. Request Validation Limits (Week 4 Day 6)
+
+All request validation is enforced by Pydantic at the FastAPI layer before any business logic executes. Invalid requests return `HTTP 422 Unprocessable Entity`.
+
+### 7.1 Text Field Limits
+
+| Field | Constraint | Description |
+|---|---|---|
+| `query` | max 2 000 characters | Natural-language search string. Treated purely as data — never executed as SQL, Cypher, or shell command. |
+| `query_text` | max 2 000 characters | Alias for `query`. Same constraint applies. |
+
+### 7.2 List Field Limits
+
+| Field | Constraint | Description |
+|---|---|---|
+| `entity_hints` | max 50 items | Entity filter list. Prevents unreasonably large per-request filtering. |
+| `entities` | max 50 items | Alias for `entity_hints`. Same constraint applies. |
+| `relation_hints` | max 50 items | Relation label filter list. |
+| `sources` | values restricted to `"slack"`, `"github"`, `"jira"` | Any unknown source value triggers a 422 response. Empty list means all sources. |
+
+### 7.3 Numeric Field Limits
+
+| Field | Constraint | Description |
+|---|---|---|
+| `limit` | 1 – 1 000 | Maximum number of records to return (backward compatibility). |
+| `page` | 1 – 9 999 | 1-based page number. Prevents unreasonably large offset calculations. |
+| `page_size` | 1 – 100 | Records per page. |
+
+### 7.4 Date Field Constraints
+
+| Field | Constraint |
+|---|---|
+| `exact_date`, `start_date`, `end_date`, `before_date`, `after_date` | Must be a valid ISO 8601 calendar date (`YYYY-MM-DD`). Malformed strings return 422. |
+| `start_date` / `end_date` pair | `start_date` must not be after `end_date`. Inverted ranges return 422. |
+
+### 7.5 Text Input Safety
+
+Free-text query values in `query` / `query_text` are treated **purely as data**:
+
+- They are matched case-insensitively against record fields using string operations.
+- They are **never** interpolated into SQL, Cypher, shell commands, or filesystem paths.
+- Special characters (SQL injection patterns, Cypher clauses, shell metacharacters, XSS payloads, path traversal sequences) are all handled safely and simply return 0 results if no records match.
+
+### 7.6 Response Safety Guarantees
+
+API responses at all times:
+
+- Do **not** include Python tracebacks.
+- Do **not** expose local filesystem paths.
+- Do **not** expose environment variables, API keys, or database connection strings.
+- Do **not** expose raw exception messages from service or data errors.
+- Return only structured, sanitised `{"detail": "..."}` messages for all error statuses.
+
