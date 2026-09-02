@@ -110,22 +110,37 @@ def validate_extraction(
             errors.append(f"Entity at index {idx} ('{entity.name}') has empty or missing 'type'.")
         else:
             type_val = entity.type.value if hasattr(entity.type, "value") else str(entity.type)
-            # Also detect when type resolved to OTHER due to an empty or unrecognised raw value
-            raw_type = ""
+            # When the input is a raw dict, check the original string value to distinguish between
+            # an explicitly empty type (error) and a legitimately unrecognised type (warning).
+            # When the input is already a GraphExtractionResult model, we cannot recover the
+            # original string, so we treat OTHER as a warning rather than an error.
             if isinstance(extraction, dict):
                 raw_type_candidate = extraction.get("entities", [])
-                if isinstance(raw_type_candidate, list) and idx < len(raw_type_candidate):
-                    raw_type = str(raw_type_candidate[idx].get("type", "")).strip()
-            if type_val == "OTHER" and (not raw_type or raw_type.upper() not in {
-                "PERSON", "USER", "TEAM", "ORGANIZATION", "PROJECT", "REPOSITORY",
-                "ISSUE", "TASK", "COMMIT", "PULL_REQUEST", "CHANNEL", "MESSAGE",
-                "DOCUMENT", "SYSTEM", "SERVICE", "OTHER"
-            }):
-                if not raw_type:
-                    errors.append(f"Entity at index {idx} ('{entity.name}') has empty or missing 'type'.")
-                else:
-                    warnings.append(f"Entity '{entity.name}' at index {idx} uses fallback type 'OTHER'.")
+                raw_type = (
+                    str(raw_type_candidate[idx].get("type", "")).strip()
+                    if isinstance(raw_type_candidate, list) and idx < len(raw_type_candidate)
+                    else ""
+                )
+                if type_val == "OTHER":
+                    if not raw_type:
+                        errors.append(
+                            f"Entity at index {idx} ('{entity.name}') has empty or missing 'type'."
+                        )
+                    elif raw_type.upper() not in {
+                        "PERSON", "USER", "TEAM", "ORGANIZATION", "PROJECT", "REPOSITORY",
+                        "ISSUE", "TASK", "COMMIT", "PULL_REQUEST", "CHANNEL", "MESSAGE",
+                        "DOCUMENT", "SYSTEM", "SERVICE", "OTHER"
+                    }:
+                        warnings.append(
+                            f"Entity '{entity.name}' at index {idx} uses fallback type 'OTHER'."
+                        )
+                    # raw_type == "OTHER" explicitly: emit a warning (already in elif branch below)
+                    else:
+                        warnings.append(
+                            f"Entity '{entity.name}' at index {idx} uses fallback type 'OTHER'."
+                        )
             elif type_val == "OTHER":
+                # GraphExtractionResult input: OTHER may be explicit or a fallback — warn, don't error.
                 warnings.append(f"Entity '{entity.name}' at index {idx} uses fallback type 'OTHER'.")
             if entity_name_raw:
                 known_references.add(generate_entity_id(entity_name_raw, type_val).lower())

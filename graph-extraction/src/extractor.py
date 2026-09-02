@@ -102,16 +102,21 @@ class GraphExtractor:
         json_str = response_text.strip()
         snippet = response_text[:300]
 
-        # Locate first '{' and last '}' to robustly extract JSON object,
-        # handling markdown wrappers or leading/trailing text.
-        start_idx = json_str.find("{")
-        end_idx = json_str.rfind("}")
-        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-            json_str = json_str[start_idx:end_idx + 1]
+        # Explicitly check for markdown fences first
+        md_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", json_str, re.DOTALL | re.IGNORECASE)
+        if md_match:
+            json_str = md_match.group(1)
         else:
-            error_msg = f"LLM response contains no recognizable JSON object boundaries. Response snippet: {snippet!r}"
-            logger.warning(error_msg)
-            raise MalformedLLMResponseError(error_msg)
+            # Fallback: Locate first '{' and last '}' to robustly extract JSON object,
+            # handling leading/trailing text.
+            start_idx = json_str.find("{")
+            end_idx = json_str.rfind("}")
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                json_str = json_str[start_idx:end_idx + 1]
+            else:
+                error_msg = f"LLM response contains no recognizable JSON object boundaries. Response snippet: {snippet!r}"
+                logger.warning(error_msg)
+                raise MalformedLLMResponseError(error_msg)
 
         try:
             data = json.loads(json_str)

@@ -73,6 +73,9 @@ def normalize_entity_name(name: str) -> str:
     if not cleaned:
         cleaned = raw_name
 
+    # Collapse internal multiple spaces/tabs to a single space
+    cleaned = re.sub(r'[ \t]+', ' ', cleaned).strip()
+
     # Normalize all-uppercase or all-lowercase names to Title Case (e.g. 'AATHI' / 'aathi' -> 'Aathi')
     # Preserves CamelCase/PascalCase (e.g. 'ChronoGraph', 'FastAPI', 'Neo4j')
     if cleaned.isupper() or cleaned.islower():
