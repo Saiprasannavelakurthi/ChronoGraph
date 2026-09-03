@@ -26,12 +26,14 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
 from config.settings import settings
@@ -83,36 +85,81 @@ app.add_middleware(
 )
 
 
+# ── X-Request-ID Middleware (Week 4 Day 7) ─────────────────────────────────────────────────
+
+@app.middleware("http")
+async def attach_request_id_middleware(request: Request, call_next) -> Response:
+    """
+    Generate a server-side UUID request ID for every HTTP request.
+
+    - ID is always generated server-side (uuid4 — never derived from user input).
+    - The request ID is attached to ``request.state.request_id`` for use by
+      endpoint handlers and the service layer.
+    - The same ID is returned in the ``X-Request-ID`` response header so API
+      clients can correlate logs with specific requests.
+    - No sensitive data is ever used as or included in the request ID.
+    """
+    server_request_id = str(uuid4())
+    request.state.request_id = server_request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = server_request_id
+    return response
+
+
 # ── Exception Handlers ───────────────────────────────────────────────────────
 
 @app.exception_handler(RetrievalDataNotFoundError)
 async def retrieval_data_not_found_handler(request: Request, exc: RetrievalDataNotFoundError) -> JSONResponse:
     """Safe 404 handler for missing retrieval data without leaking paths or traces."""
-    logger.warning("Retrieval data not found: %s", exc)
-    return JSONResponse(
-        status_code=status.HTTP_404_NOT_FOUND,
-        content={"detail": "Retrieval data file not found. Run 'python main.py --prepare-retrieval' first."},
+    request_id = getattr(request.state, "request_id", None)
+    logger.warning(
+        "retrieval_data_not_found request_id=%s endpoint=%s method=%s status=404",
+        request_id,
+        request.url.path,
+        request.method,
     )
+    content: Dict[str, Any] = {
+        "detail": "Retrieval data file not found. Run 'python main.py --prepare-retrieval' first.",
+    }
+    if request_id:
+        content["request_id"] = request_id
+    return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content=content)
 
 
 @app.exception_handler(RetrievalDataFormatError)
 async def retrieval_data_format_handler(request: Request, exc: RetrievalDataFormatError) -> JSONResponse:
     """Safe 500 handler for corrupted retrieval data."""
-    logger.error("Retrieval data format error: %s", exc)
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Retrieval data file is corrupted or cannot be parsed."},
+    request_id = getattr(request.state, "request_id", None)
+    logger.error(
+        "retrieval_data_format_error request_id=%s endpoint=%s method=%s status=500",
+        request_id,
+        request.url.path,
+        request.method,
     )
+    content: Dict[str, Any] = {
+        "detail": "Retrieval data file is corrupted or cannot be parsed.",
+    }
+    if request_id:
+        content["request_id"] = request_id
+    return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=content)
 
 
 @app.exception_handler(RetrievalServiceError)
 async def retrieval_service_error_handler(request: Request, exc: RetrievalServiceError) -> JSONResponse:
     """Safe 500 handler for unexpected retrieval service errors."""
-    logger.error("Retrieval service error: %s", exc)
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Internal retrieval service error occurred."},
+    request_id = getattr(request.state, "request_id", None)
+    logger.error(
+        "retrieval_service_error request_id=%s endpoint=%s method=%s status=500",
+        request_id,
+        request.url.path,
+        request.method,
     )
+    content: Dict[str, Any] = {
+        "detail": "Internal retrieval service error occurred.",
+    }
+    if request_id:
+        content["request_id"] = request_id
+    return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=content)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -486,7 +533,7 @@ async def api_health() -> RetrievalHealthResponse:
     tags=["Retrieval"],
     summary="Query temporal retrieval records",
 )
-async def query_retrieval(request: RetrievalQueryRequest) -> RetrievalQueryResponse:
+async def query_retrieval(request: Request, body: RetrievalQueryRequest) -> RetrievalQueryResponse:
     """
     Execute a structured temporal retrieval query against retrieval-ready evidence records.
 
@@ -499,35 +546,72 @@ async def query_retrieval(request: RetrievalQueryRequest) -> RetrievalQueryRespo
       - Chronological sorting (ASC / DESC)
       - Result limit and total match count prior to limit
       - Complete evidence provenance preservation
+      - Observability metadata (request_id, execution_time_ms, cache_hit) in response (Week 4 Day 7)
     """
+    _endpoint_start = time.perf_counter()
+    request_id = getattr(request.state, "request_id", str(uuid4()))
     try:
-        return retrieval_service.query(request)
+        resp = retrieval_service.query(body)
+        _endpoint_ms = (time.perf_counter() - _endpoint_start) * 1000
+        logger.info(
+            "retrieval_query_endpoint request_id=%s method=POST endpoint=/api/retrieval/query "
+            "status=200 endpoint_ms=%.2f results=%d cache_hit=%s",
+            request_id,
+            _endpoint_ms,
+            resp.returned_count,
+            resp.metadata.cache_hit if resp.metadata else "unknown",
+        )
+        return resp
     except RetrievalDataNotFoundError as exc:
-        logger.warning("Retrieval query failed - data not found: %s", exc)
-        raise HTTPException(
+        logger.warning(
+            "retrieval_query_endpoint request_id=%s status=404 reason=data_not_found",
+            request_id,
+        )
+        return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Retrieval data file not found. Run 'python main.py --prepare-retrieval' first.",
-        ) from exc
+            content={
+                "detail": "Retrieval data file not found. Run 'python main.py --prepare-retrieval' first.",
+                "request_id": request_id,
+            },
+        )
     except (RetrievalDataFormatError, RetrievalDataCorruptedError) as exc:
-        logger.error("Corrupted retrieval data encountered during query: %s", exc)
-        raise HTTPException(
+        logger.error(
+            "retrieval_query_endpoint request_id=%s status=500 reason=corrupted_data",
+            request_id,
+        )
+        return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Retrieval data file is corrupted or cannot be parsed.",
-        ) from exc
+            content={
+                "detail": "Retrieval data file is corrupted or cannot be parsed.",
+                "request_id": request_id,
+            },
+        )
     except RetrievalServiceError as exc:
-        logger.error("Retrieval service error during query: %s", exc)
-        raise HTTPException(
+        logger.error(
+            "retrieval_query_endpoint request_id=%s status=500 reason=service_error",
+            request_id,
+        )
+        return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal retrieval service error occurred while processing query.",
-        ) from exc
+            content={
+                "detail": "Internal retrieval service error occurred while processing query.",
+                "request_id": request_id,
+            },
+        )
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("Unexpected error in /api/retrieval/query: %s", exc)
-        raise HTTPException(
+        logger.error(
+            "retrieval_query_endpoint request_id=%s status=500 reason=unexpected_error",
+            request_id,
+        )
+        return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error occurred while processing retrieval query.",
-        ) from exc
+            content={
+                "detail": "Internal server error occurred while processing retrieval query.",
+                "request_id": request_id,
+            },
+        )
 
 
 @app.get(

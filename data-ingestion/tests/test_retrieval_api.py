@@ -45,6 +45,7 @@ from src.retrieval.models import (
     RetrievalQueryResponse,
     RetrievalRecord,
     RetrievalRequest,
+    RetrievalRequestMetadata,
     SortOrder,
     TemporalFilter,
 )
@@ -1889,3 +1890,459 @@ class TestApiSecurityAndInputValidation:
             "/api/retrieval/query",
             json={"start_date": "2023-06-01", "end_date": "2023-01-01"},
         ).status_code == 422
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Week 4 Day 7 — Retrieval API Observability & Audit Metadata Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestObservabilityMetadata:
+    """
+    Week 4 Day 7 — Tests for per-request observability metadata.
+
+    Covers:
+      - metadata field presence in every successful response
+      - request_id: exists, non-empty, string, unique across requests
+      - execution_time_ms: exists, numeric, non-negative
+      - returned_count, total_count, page, page_size accuracy
+      - cache_hit reporting (first request vs repeated request)
+      - X-Request-ID response header
+      - request_id present in safe error responses (404 / 500)
+      - sensitive info not exposed in error responses
+      - backward compatibility of all existing API behavior
+    """
+
+    # ── Metadata presence ──────────────────────────────────────────────────
+
+    def test_successful_response_contains_metadata(self) -> None:
+        """Every successful retrieval response must include the metadata field."""
+        response = client.post("/api/retrieval/query", json={})
+        assert response.status_code == 200
+        data = response.json()
+        assert "metadata" in data, "Response must contain 'metadata' field"
+        assert data["metadata"] is not None, "'metadata' must not be null"
+
+    # ── request_id ────────────────────────────────────────────────────────
+
+    def test_request_id_exists_in_metadata(self) -> None:
+        """Successful response metadata must include a request_id field."""
+        response = client.post("/api/retrieval/query", json={})
+        assert response.status_code == 200
+        meta = response.json()["metadata"]
+        assert "request_id" in meta
+
+    def test_request_id_is_non_empty_string(self) -> None:
+        """request_id must be a non-empty string."""
+        response = client.post("/api/retrieval/query", json={})
+        assert response.status_code == 200
+        meta = response.json()["metadata"]
+        assert isinstance(meta["request_id"], str)
+        assert len(meta["request_id"]) > 0
+
+    def test_request_id_is_unique_across_separate_requests(self) -> None:
+        """Two separate requests must receive different request IDs."""
+        r1 = client.post("/api/retrieval/query", json={})
+        r2 = client.post("/api/retrieval/query", json={})
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+        id1 = r1.json()["metadata"]["request_id"]
+        id2 = r2.json()["metadata"]["request_id"]
+        assert id1 != id2, "Each request must receive a unique request_id"
+
+    def test_multiple_requests_all_have_unique_request_ids(self) -> None:
+        """Ten consecutive requests must all produce distinct request IDs."""
+        ids = set()
+        for _ in range(10):
+            resp = client.post("/api/retrieval/query", json={"limit": 1})
+            assert resp.status_code == 200
+            ids.add(resp.json()["metadata"]["request_id"])
+        assert len(ids) == 10, "All 10 request IDs must be unique"
+
+    # ── execution_time_ms ─────────────────────────────────────────────────
+
+    def test_execution_time_ms_exists(self) -> None:
+        """Metadata must include execution_time_ms."""
+        response = client.post("/api/retrieval/query", json={})
+        assert response.status_code == 200
+        meta = response.json()["metadata"]
+        assert "execution_time_ms" in meta
+
+    def test_execution_time_ms_is_numeric(self) -> None:
+        """execution_time_ms must be a number (int or float)."""
+        response = client.post("/api/retrieval/query", json={})
+        assert response.status_code == 200
+        meta = response.json()["metadata"]
+        assert isinstance(meta["execution_time_ms"], (int, float)), (
+            f"execution_time_ms must be numeric, got {type(meta['execution_time_ms'])}"
+        )
+
+    def test_execution_time_ms_is_non_negative(self) -> None:
+        """execution_time_ms must always be >= 0."""
+        response = client.post("/api/retrieval/query", json={})
+        assert response.status_code == 200
+        meta = response.json()["metadata"]
+        assert meta["execution_time_ms"] >= 0, (
+            f"execution_time_ms must be >= 0, got {meta['execution_time_ms']}"
+        )
+
+    def test_execution_time_ms_not_checked_for_exact_value(self) -> None:
+        """execution_time_ms must be a non-negative float; exact value is not checked."""
+        # Deliberately do NOT assert any upper bound on timing
+        response = client.post("/api/retrieval/query", json={"limit": 5})
+        assert response.status_code == 200
+        assert response.json()["metadata"]["execution_time_ms"] >= 0
+
+    # ── returned_count ────────────────────────────────────────────────────
+
+    def test_metadata_returned_count_matches_response(self) -> None:
+        """metadata.returned_count must equal the top-level returned_count."""
+        response = client.post("/api/retrieval/query", json={"limit": 5})
+        assert response.status_code == 200
+        data = response.json()
+        meta = data["metadata"]
+        assert meta["returned_count"] == data["returned_count"], (
+            f"metadata.returned_count={meta['returned_count']} != "
+            f"response.returned_count={data['returned_count']}"
+        )
+        # Also verify it equals the actual result list length
+        assert meta["returned_count"] == len(data["results"])
+
+    def test_metadata_returned_count_correct_for_zero_results(self) -> None:
+        """metadata.returned_count must be 0 when no records match."""
+        response = client.post(
+            "/api/retrieval/query",
+            json={"entity_hints": ["nonexistent_entity_xyz_999"]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["metadata"]["returned_count"] == 0
+
+    # ── total_count ───────────────────────────────────────────────────────
+
+    def test_metadata_total_count_matches_total_matches(self) -> None:
+        """metadata.total_count must equal the top-level total_matches."""
+        response = client.post("/api/retrieval/query", json={"limit": 5})
+        assert response.status_code == 200
+        data = response.json()
+        meta = data["metadata"]
+        assert meta["total_count"] == data["total_matches"], (
+            f"metadata.total_count={meta['total_count']} != "
+            f"response.total_matches={data['total_matches']}"
+        )
+
+    def test_metadata_total_count_zero_for_empty_results(self) -> None:
+        """metadata.total_count must be 0 when no records match."""
+        response = client.post(
+            "/api/retrieval/query",
+            json={"entity_hints": ["nonexistent_entity_xyz_999"]},
+        )
+        assert response.status_code == 200
+        assert response.json()["metadata"]["total_count"] == 0
+
+    # ── page and page_size ────────────────────────────────────────────────
+
+    def test_metadata_page_correct(self) -> None:
+        """metadata.page must match the requested page number."""
+        response = client.post("/api/retrieval/query", json={"page": 2, "page_size": 5})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["metadata"]["page"] == 2
+        assert data["metadata"]["page"] == data["page"]
+
+    def test_metadata_page_size_correct(self) -> None:
+        """metadata.page_size must match the requested page_size."""
+        response = client.post("/api/retrieval/query", json={"page": 1, "page_size": 7})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["metadata"]["page_size"] == 7
+        assert data["metadata"]["page_size"] == data["page_size"]
+
+    def test_metadata_page_defaults_to_one(self) -> None:
+        """metadata.page defaults to 1 when not specified."""
+        response = client.post("/api/retrieval/query", json={})
+        assert response.status_code == 200
+        assert response.json()["metadata"]["page"] == 1
+
+    # ── cache_hit ─────────────────────────────────────────────────────────
+
+    def test_cache_hit_is_boolean(self) -> None:
+        """metadata.cache_hit must be a boolean value."""
+        response = client.post("/api/retrieval/query", json={})
+        assert response.status_code == 200
+        meta = response.json()["metadata"]
+        assert isinstance(meta["cache_hit"], bool), (
+            f"cache_hit must be bool, got {type(meta['cache_hit'])}"
+        )
+
+    def test_first_request_may_report_cache_miss(
+        self, temp_records_file: Path
+    ) -> None:
+        """
+        A freshly created service (no cached records) must report cache_hit=False
+        on the first query, since records must be loaded from disk.
+        """
+        service = RetrievalService(records_path=temp_records_file)
+        # Confirm no cache yet
+        assert service._cached_records is None
+        req = RetrievalQueryRequest(limit=1)
+        resp = service.query(req)
+        assert resp.metadata is not None
+        assert resp.metadata.cache_hit is False
+
+    def test_repeated_request_reports_cache_hit(
+        self, temp_records_file: Path
+    ) -> None:
+        """
+        A second query to the same service instance (records already cached)
+        must report cache_hit=True.
+        """
+        service = RetrievalService(records_path=temp_records_file)
+        # First request: loads from disk
+        resp1 = service.query(RetrievalQueryRequest(limit=1))
+        assert resp1.metadata is not None
+        # First request: cache was empty → cache_hit=False
+        assert resp1.metadata.cache_hit is False
+
+        # Second request: uses in-memory cache → cache_hit=True
+        resp2 = service.query(RetrievalQueryRequest(limit=1))
+        assert resp2.metadata is not None
+        assert resp2.metadata.cache_hit is True
+
+    def test_cache_hit_reported_even_when_results_are_empty(
+        self, temp_records_file: Path
+    ) -> None:
+        """cache_hit must still be reported correctly even when no records match."""
+        service = RetrievalService(records_path=temp_records_file)
+        # First request seeds cache
+        service.query(RetrievalQueryRequest(limit=1))
+
+        # Second request for non-existent entity: still hits cache
+        resp = service.query(
+            RetrievalQueryRequest(entity_hints=["nonexistent_entity_xyz_999"])
+        )
+        assert resp.metadata is not None
+        assert resp.metadata.cache_hit is True
+        assert resp.metadata.returned_count == 0
+        assert resp.metadata.execution_time_ms >= 0
+
+    # ── X-Request-ID header ───────────────────────────────────────────────
+
+    def test_x_request_id_header_present_in_response(self) -> None:
+        """Every HTTP response must include the X-Request-ID header."""
+        response = client.post("/api/retrieval/query", json={})
+        assert response.status_code == 200
+        assert "x-request-id" in response.headers or "X-Request-ID" in response.headers, (
+            "X-Request-ID header must be present in the response"
+        )
+
+    def test_x_request_id_header_is_non_empty(self) -> None:
+        """X-Request-ID header must be a non-empty string."""
+        response = client.post("/api/retrieval/query", json={})
+        assert response.status_code == 200
+        header_value = response.headers.get("x-request-id") or response.headers.get("X-Request-ID")
+        assert header_value is not None
+        assert len(header_value) > 0
+
+    def test_x_request_id_header_unique_per_request(self) -> None:
+        """X-Request-ID header must differ across separate requests."""
+        r1 = client.post("/api/retrieval/query", json={})
+        r2 = client.post("/api/retrieval/query", json={})
+        h1 = r1.headers.get("x-request-id") or r1.headers.get("X-Request-ID")
+        h2 = r2.headers.get("x-request-id") or r2.headers.get("X-Request-ID")
+        assert h1 != h2, "X-Request-ID must differ across requests"
+
+    # ── metadata.timestamp ────────────────────────────────────────────────
+
+    def test_metadata_timestamp_exists(self) -> None:
+        """metadata.timestamp must be present."""
+        response = client.post("/api/retrieval/query", json={})
+        assert response.status_code == 200
+        meta = response.json()["metadata"]
+        assert "timestamp" in meta
+
+    def test_metadata_timestamp_is_non_empty_string(self) -> None:
+        """metadata.timestamp must be a non-empty string (UTC ISO-8601)."""
+        response = client.post("/api/retrieval/query", json={})
+        assert response.status_code == 200
+        ts = response.json()["metadata"]["timestamp"]
+        assert isinstance(ts, str)
+        assert len(ts) > 0
+
+    # ── request_id in error responses ─────────────────────────────────────
+
+    def test_request_id_present_in_404_error_response(self) -> None:
+        """
+        Safe 404 error responses must include a request_id field in the JSON body
+        to allow log correlation.
+        """
+        with patch.object(
+            RetrievalService,
+            "query",
+            side_effect=RetrievalDataNotFoundError("Data file not found"),
+        ):
+            response = client.post("/api/retrieval/query", json={})
+            assert response.status_code == 404
+            data = response.json()
+            assert "request_id" in data, "404 response must contain request_id"
+            assert isinstance(data["request_id"], str)
+            assert len(data["request_id"]) > 0
+
+    def test_request_id_present_in_500_error_response(self) -> None:
+        """
+        Safe 500 error responses must include a request_id field in the JSON body
+        to allow log correlation.
+        """
+        with patch.object(
+            RetrievalService,
+            "query",
+            side_effect=RetrievalServiceError("Internal failure"),
+        ):
+            response = client.post("/api/retrieval/query", json={})
+            assert response.status_code == 500
+            data = response.json()
+            assert "request_id" in data, "500 response must contain request_id"
+            assert isinstance(data["request_id"], str)
+            assert len(data["request_id"]) > 0
+
+    # ── Sensitive information must NOT be exposed ─────────────────────────
+
+    def test_request_id_does_not_expose_sensitive_data(self) -> None:
+        """
+        The request_id must be a server-generated UUID; it must not contain or
+        echo any user-supplied query text or sensitive environment data.
+        """
+        sensitive_query = "postgres://admin:SuperSecretPassword@internal-db/prod"
+        response = client.post("/api/retrieval/query", json={"query": sensitive_query})
+        # Status may be 200 (query treated as data) or other safe code
+        if response.status_code == 200:
+            meta = response.json()["metadata"]
+            request_id = meta["request_id"]
+            # request_id must not contain any part of the sensitive query
+            assert "SuperSecretPassword" not in request_id
+            assert "postgres://" not in request_id
+            assert "internal-db" not in request_id
+
+    def test_error_response_does_not_expose_internal_exception_via_request_id(self) -> None:
+        """
+        Even when a request_id is included in an error response, sensitive internal
+        exception messages must not appear anywhere in the response body.
+        """
+        secret_message = "postgres://admin:SuperSecretPass@internal-db:5432/prod"
+        with patch.object(
+            RetrievalService,
+            "query",
+            side_effect=RuntimeError(secret_message),
+        ):
+            response = client.post("/api/retrieval/query", json={})
+            assert response.status_code == 500
+            body = response.json()
+            # detail must be sanitized
+            assert "SuperSecretPass" not in body.get("detail", "")
+            assert "postgres://" not in body.get("detail", "")
+            # request_id must not contain the secret either
+            rid = body.get("request_id", "")
+            assert "SuperSecretPass" not in rid
+            assert "postgres://" not in rid
+
+    # ── Backward compatibility ─────────────────────────────────────────────
+
+    def test_existing_fields_still_present_in_response(self) -> None:
+        """
+        All pre-existing response fields must remain present and unmodified.
+        Adding metadata must not break backward compatibility.
+        """
+        response = client.post("/api/retrieval/query", json={"limit": 5})
+        assert response.status_code == 200
+        data = response.json()
+        # All original top-level fields must still be present
+        for field in (
+            "query", "total_matches", "returned_count", "page", "page_size",
+            "total_pages", "has_next", "has_previous", "results",
+            "applied_filters", "generated_at",
+        ):
+            assert field in data, f"Existing field '{field}' must still be present"
+
+    def test_existing_advanced_query_behavior_unchanged(self) -> None:
+        """Advanced query with entity + relation + source filters must still work."""
+        response = client.post(
+            "/api/retrieval/query",
+            json={
+                "query": "GCP migration",
+                "entity_hints": ["gcp"],
+                "sources": ["slack", "github"],
+                "sort_order": "asc",
+                "page": 1,
+                "page_size": 10,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        assert "results" in data
+        assert "applied_filters" in data
+        assert "generated_at" in data
+        # Observability metadata must also be present
+        assert "metadata" in data
+        assert data["metadata"]["returned_count"] == len(data["results"])
+
+    def test_existing_pagination_still_works(self) -> None:
+        """Pagination with page/page_size must remain fully functional."""
+        r1 = client.post("/api/retrieval/query", json={"page": 1, "page_size": 5})
+        r2 = client.post("/api/retrieval/query", json={"page": 2, "page_size": 5})
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+        d1 = r1.json()
+        d2 = r2.json()
+        assert d1["page"] == 1 and d1["page_size"] == 5
+        assert d2["page"] == 2 and d2["page_size"] == 5
+        # Pages must be distinct
+        ids_p1 = {r["record_id"] for r in d1["results"]}
+        ids_p2 = {r["record_id"] for r in d2["results"]}
+        assert not ids_p1 & ids_p2, "Page 1 and Page 2 records must not overlap"
+        # Metadata must be present on both pages
+        assert d1["metadata"]["page"] == 1
+        assert d2["metadata"]["page"] == 2
+
+    def test_existing_filtering_still_works(self) -> None:
+        """Source and temporal filtering must remain fully functional."""
+        response = client.post(
+            "/api/retrieval/query",
+            json={"sources": ["slack"], "start_date": "2023-03-01", "end_date": "2023-06-30"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_matches"] > 0
+        for r in data["results"]:
+            assert r["source"] == "slack"
+            assert "2023-03-01" <= r["event_date"] <= "2023-06-30"
+        # Observability metadata intact
+        assert "metadata" in data
+
+    def test_day6_validation_still_works_with_day7_metadata(self) -> None:
+        """
+        Day 6 input validation must still enforce 422 for all invalid inputs;
+        Day 7 observability must not interfere with these rejections.
+        """
+        invalid_payloads = [
+            {"sources": ["unknown_source"]},
+            {"page": 0},
+            {"page_size": 0},
+            {"limit": 0},
+            {"start_date": "2023-12-01", "end_date": "2023-01-01"},
+            {"exact_date": "not-a-date"},
+            {"entity_hints": [f"e{i}" for i in range(51)]},
+            {"relation_hints": [f"R{i}" for i in range(51)]},
+        ]
+        for payload in invalid_payloads:
+            resp = client.post("/api/retrieval/query", json=payload)
+            assert resp.status_code == 422, (
+                f"Expected 422 for payload {payload!r}, got {resp.status_code}"
+            )
+
+    def test_day6_query_length_validation_still_works(self) -> None:
+        """A query exceeding 2000 chars must still be rejected with 422."""
+        long_query = "a" * 2001
+        response = client.post("/api/retrieval/query", json={"query": long_query})
+        assert response.status_code == 422
+

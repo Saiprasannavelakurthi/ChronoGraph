@@ -660,3 +660,26 @@ python -m pytest tests/ -q
 - **Supported Filter Modes:** Exact Date, Date Range (inclusive), Before Date (exclusive), After Date (exclusive), Entity Matching, Relation Filtering, Source Filtering
 - **Provenance Coverage:** 100% of records retain source system, native ID, verbatim evidence, and UTC event timestamp
 
+### Week 4 Day 7: Observability & Audit Metadata
+
+Every successful `POST /api/retrieval/query` response now carries a `metadata` field:
+
+| Field | Description |
+|---|---|
+| `request_id` | Server-generated UUID (uuid4) per request. Safe to log; never derived from user input. |
+| `execution_time_ms` | Wall-clock time in ms (monotonic timer) for the retrieval operation. Always `>= 0`. |
+| `returned_count` | Records returned in this response page. |
+| `total_count` | Total matching records before pagination. |
+| `page` | Current 1-based page number. |
+| `page_size` | Records per page. |
+| `cache_hit` | `true` if records served from memory cache; `false` if loaded from disk. |
+| `timestamp` | UTC ISO-8601 timestamp of metadata generation. |
+
+Additional features:
+- **`X-Request-ID` response header** — Every HTTP response carries the server-side request ID for log correlation.
+- **`request_id` in error responses** — 4xx and 5xx JSON bodies include `request_id` for correlating errors with server logs.
+- **Structured safe logging** — All log lines include `request_id`, status, execution time, result count, and cache hit. Query text, API keys, credentials, and env vars are **never** logged.
+- **Backward compatible** — The `metadata` field is additive; all existing API fields, error messages, and validation behavior are unchanged.
+
+See [`docs/RETRIEVAL_API_CONTRACT.md`](docs/RETRIEVAL_API_CONTRACT.md) § 8 for full specification.
+

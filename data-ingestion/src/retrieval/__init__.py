@@ -2,6 +2,7 @@
 src/retrieval/__init__.py
 ─────────────────────────
 Week 3 & 4 — Temporal Retrieval Preparation & Service (Karkuvel's module).
+Week 4 Day 7 — Added RetrievalRequestMetadata export.
 
 Public API:
 
@@ -42,6 +43,7 @@ from src.retrieval.models import (
     RetrievalQueryResponse,
     RetrievalRecord,
     RetrievalRequest,
+    RetrievalRequestMetadata,
     TemporalFilter,
 )
 from src.retrieval.builder import RetrievalRecordBuilder
@@ -58,6 +60,7 @@ __all__ = [
     "RetrievalQueryResponse",
     "RetrievalRecord",
     "RetrievalRequest",
+    "RetrievalRequestMetadata",
     "TemporalFilter",
     "RetrievalRecordBuilder",
     "TemporalFilterEngine",

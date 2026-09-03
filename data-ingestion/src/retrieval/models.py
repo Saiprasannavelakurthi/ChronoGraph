@@ -2,6 +2,7 @@
 src/retrieval/models.py
 ────────────────────────
 Week 3 — Pydantic models for Temporal Retrieval Preparation.
+Week 4 Day 7 — Added RetrievalRequestMetadata for observability.
 
 Classes
 ───────
@@ -526,6 +527,63 @@ class RetrievalRequest(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Week 4 Day 7 — Observability Metadata
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class RetrievalRequestMetadata(BaseModel):
+    """
+    Safe, per-request observability metadata attached to every successful
+    RetrievalQueryResponse (Week 4 Day 7).
+
+    Fields
+    ──────
+    request_id      : Server-generated UUID uniquely identifying this request.
+                      Safe to log; never derived from user input.
+    execution_time_ms : Elapsed time in milliseconds for the retrieval operation
+                      measured with a monotonic timer.  Always >= 0.
+    returned_count  : Number of evidence records returned in this response page.
+    total_count     : Total number of matching records before pagination.
+    page            : Current 1-based page number.
+    page_size       : Records per page.
+    cache_hit       : True if records were served from the in-memory cache;
+                      False if records were loaded from disk for this request.
+    timestamp       : UTC ISO-8601 timestamp when this metadata was generated.
+    """
+
+    request_id: str = Field(
+        description="Server-generated UUID identifying this request (safe for logging and correlation).",
+    )
+    execution_time_ms: float = Field(
+        ge=0.0,
+        description="Elapsed wall-clock time in milliseconds for the retrieval operation (monotonic timer).",
+    )
+    returned_count: int = Field(
+        ge=0,
+        description="Number of evidence records returned in this page.",
+    )
+    total_count: int = Field(
+        ge=0,
+        description="Total number of matching records before pagination limit was applied.",
+    )
+    page: int = Field(
+        ge=1,
+        description="Current 1-based page number.",
+    )
+    page_size: int = Field(
+        ge=1,
+        description="Requested number of records per page.",
+    )
+    cache_hit: bool = Field(
+        description="True if records were served from in-memory cache; False if loaded from disk.",
+    )
+    timestamp: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
+        description="UTC ISO-8601 timestamp when this metadata was generated.",
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Week 4 API Models
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -694,6 +752,11 @@ class RetrievalQueryRequest(BaseModel):
 class RetrievalQueryResponse(BaseModel):
     """
     Week 4 API Response model returning structured temporal retrieval results.
+
+    Week 4 Day 7: Added optional ``metadata`` field (RetrievalRequestMetadata)
+    for observability.  Existing clients that do not consume ``metadata`` are
+    unaffected — the field is ``None`` by default and is omitted from responses
+    unless explicitly populated by the service layer.
     """
 
     query: Optional[str] = Field(
@@ -743,10 +806,18 @@ class RetrievalQueryResponse(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc).isoformat(),
         description="UTC ISO-8601 timestamp when this response was generated.",
     )
+    metadata: Optional["RetrievalRequestMetadata"] = Field(
+        default=None,
+        description=(
+            "Per-request observability metadata (Week 4 Day 7). "
+            "Includes request_id, execution_time_ms, cache_hit, and result counts. "
+            "Null when not populated by the service layer."
+        ),
+    )
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize to a plain JSON-compatible dictionary."""
-        return {
+        d: Dict[str, Any] = {
             "query": self.query,
             "total_matches": self.total_matches,
             "returned_count": self.returned_count,
@@ -759,6 +830,9 @@ class RetrievalQueryResponse(BaseModel):
             "applied_filters": self.applied_filters,
             "generated_at": self.generated_at,
         }
+        if self.metadata is not None:
+            d["metadata"] = self.metadata.model_dump()
+        return d
 
 
 class RetrievalHealthResponse(BaseModel):

@@ -26,6 +26,7 @@ import logging
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+from uuid import uuid4
 
 from config.settings import settings
 from src.retrieval.errors import (
@@ -43,6 +44,7 @@ from src.retrieval.models import (
     RetrievalQueryResponse,
     RetrievalRecord,
     RetrievalRequest,
+    RetrievalRequestMetadata,
 )
 
 logger = logging.getLogger(__name__)
@@ -176,25 +178,37 @@ class RetrievalService:
         Execute a temporal retrieval query against loaded records.
 
         Steps:
-          1. Safely load records.
-          2. Normalize request into RetrievalRequest.
-          3. Apply TemporalFilterEngine filtering across source, entity, relation,
+          1. Generate a server-side request_id (uuid4 — never from user input).
+          2. Detect cache_hit before loading records.
+          3. Safely load records (uses in-memory cache when available).
+          4. Normalize request into RetrievalRequest.
+          5. Apply TemporalFilterEngine filtering across source, entity, relation,
              and temporal boundaries.
-          4. Compute total matching records prior to result limiting.
-          5. Apply chronological sorting and limit.
-          6. Assemble structured RetrievalQueryResponse.
+          6. Compute total matching records prior to result limiting.
+          7. Apply chronological sorting and limit.
+          8. Measure total execution time (monotonic timer).
+          9. Assemble structured RetrievalQueryResponse with RetrievalRequestMetadata.
 
         Parameters:
             request: RetrievalQueryRequest, RetrievalRequest, or raw dictionary.
 
         Returns:
-            RetrievalQueryResponse: Complete structured response.
+            RetrievalQueryResponse: Complete structured response with observability metadata.
         """
-        # Step 1: Ensure records are loaded (uses in-memory cache when available)
+        # Step 1: Generate a server-side request ID — never derived from user input
+        request_id = str(uuid4())
+
+        # Step 2: Detect cache hit BEFORE calling load_records
+        cache_hit = self._cached_records is not None
+
+        # Step 3: Start timing (monotonic timer)
+        _query_start = time.perf_counter()
+
+        # Step 4: Ensure records are loaded (uses in-memory cache when available)
         records = self.load_records()
         records_loaded = len(records)
 
-        # Step 2: Normalize request
+        # Step 5: Normalize request
         retrieval_req: RetrievalRequest
         query_echo: Optional[str] = None
         page: int = 1
@@ -220,7 +234,7 @@ class RetrievalService:
         else:
             raise ValueError(f"Unsupported request type: {type(request).__name__}")
 
-        # Step 3: Apply filter engine with unlimited limit to determine total_matches
+        # Step 6: Apply filter engine with unlimited limit to determine total_matches
         # TemporalFilterEngine is stateless and applies source -> entity -> relation -> temporal -> sort -> limit
         unlimited_limit = records_loaded + 1
         unlimited_req = retrieval_req.model_copy(update={"limit": unlimited_limit})
@@ -230,7 +244,7 @@ class RetrievalService:
 
         total_matches = len(all_filtered)
 
-        # Step 4: Apply 1-based pagination
+        # Step 7: Apply 1-based pagination
         if total_matches == 0:
             total_pages = 0
         else:
@@ -244,7 +258,10 @@ class RetrievalService:
         has_next = page < total_pages
         has_previous = page > 1 and total_pages > 0
 
-        # Step 5: Construct applied filters summary
+        # Step 8: Stop timing after all retrieval work is done
+        execution_time_ms = (time.perf_counter() - _query_start) * 1000
+
+        # Step 9: Construct applied filters summary
         applied_filters = {
             "query_text": retrieval_req.query_text,
             "entities": retrieval_req.entities,
@@ -258,16 +275,40 @@ class RetrievalService:
             "page_size": page_size,
         }
 
+        # Build observability metadata — safe fields only, never from user input
+        obs_metadata = RetrievalRequestMetadata(
+            request_id=request_id,
+            execution_time_ms=round(execution_time_ms, 3),
+            returned_count=returned_count,
+            total_count=total_matches,
+            page=page,
+            page_size=page_size,
+            cache_hit=cache_hit,
+        )
+
+        # Structured, safe log — does NOT log query text, API keys, or env vars
         logger.info(
-            "RetrievalService.query completed: records_loaded=%d, filtering_ms=%.2f, "
-            "total_matches=%d, returned=%d (page=%d, page_size=%d, total_pages=%d)",
-            records_loaded,
-            _filter_ms,
-            total_matches,
+            "retrieval_query request_id=%s endpoint=/api/retrieval/query method=POST "
+            "status=200 execution_ms=%.2f results=%d total_matches=%d "
+            "cache_hit=%s page=%d page_size=%d",
+            request_id,
+            execution_time_ms,
             returned_count,
+            total_matches,
+            cache_hit,
             page,
             page_size,
+        )
+        # Internal diagnostic log (filtering time only)
+        logger.debug(
+            "RetrievalService.query detail: request_id=%s records_loaded=%d "
+            "filtering_ms=%.2f total_pages=%d has_next=%s has_previous=%s",
+            request_id,
+            records_loaded,
+            _filter_ms,
             total_pages,
+            has_next,
+            has_previous,
         )
 
         return RetrievalQueryResponse(
@@ -281,6 +322,7 @@ class RetrievalService:
             has_previous=has_previous,
             results=page_results,
             applied_filters=applied_filters,
+            metadata=obs_metadata,
         )
 
     # ── Health & Statistics ──────────────────────────────────────────────────

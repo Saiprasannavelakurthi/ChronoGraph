@@ -322,3 +322,138 @@ API responses at all times:
 - Do **not** expose raw exception messages from service or data errors.
 - Return only structured, sanitised `{"detail": "..."}` messages for all error statuses.
 
+---
+
+## 8. Observability & Audit Metadata (Week 4 Day 7)
+
+Every successful `POST /api/retrieval/query` response now includes a `metadata` field providing per-request tracing information.
+
+### 8.1 `RetrievalRequestMetadata` — Response Field
+
+The `metadata` field is added to `RetrievalQueryResponse`. It is `null` only if the service layer fails before metadata can be produced; under normal operation it is always populated.
+
+#### `metadata` Object Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `request_id` | `string (UUID)` | Server-generated UUID uniquely identifying this request. Safe to log. Never derived from user input. |
+| `execution_time_ms` | `float (>= 0)` | Wall-clock time in milliseconds measured with a monotonic timer from the start of `query()` to completion. Always non-negative. |
+| `returned_count` | `integer (>= 0)` | Number of evidence records returned in this response page. Equals `len(results)`. |
+| `total_count` | `integer (>= 0)` | Total number of matching records before pagination was applied. Equals `total_matches`. |
+| `page` | `integer (>= 1)` | Current 1-based page number. |
+| `page_size` | `integer (>= 1)` | Number of records per page as applied. |
+| `cache_hit` | `boolean` | `true` if records were served from the in-memory cache (a prior request already loaded them). `false` if records were loaded from disk for this request. |
+| `timestamp` | `string (ISO-8601)` | UTC timestamp when this metadata object was generated. |
+
+#### Example Response with Metadata
+
+```json
+{
+  "query": "GCP migration",
+  "total_matches": 12,
+  "returned_count": 5,
+  "page": 1,
+  "page_size": 5,
+  "total_pages": 3,
+  "has_next": true,
+  "has_previous": false,
+  "results": [...],
+  "applied_filters": {...},
+  "generated_at": "2026-09-03T15:45:00.000000+00:00",
+  "metadata": {
+    "request_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "execution_time_ms": 4.217,
+    "returned_count": 5,
+    "total_count": 12,
+    "page": 1,
+    "page_size": 5,
+    "cache_hit": true,
+    "timestamp": "2026-09-03T15:45:00.000000+00:00"
+  }
+}
+```
+
+---
+
+### 8.2 `X-Request-ID` Response Header
+
+Every HTTP response (including 4xx and 5xx error responses) includes the `X-Request-ID` header:
+
+```
+X-Request-ID: f47ac10b-58cc-4372-a567-0e02b2c3d479
+```
+
+- The ID is always **generated server-side** using `uuid4()`.
+- The ID is **never derived from user input** or any sensitive environment variable.
+- API clients can use this header to correlate their request with server-side log entries.
+- The middleware attaches the same ID to both the response header and the `metadata.request_id` field in the JSON body.
+
+---
+
+### 8.3 Request ID in Error Responses
+
+For safe 4xx and 5xx responses, the `request_id` is included in the JSON body to enable log correlation:
+
+```json
+{
+  "detail": "Retrieval data file not found. Run 'python main.py --prepare-retrieval' first.",
+  "request_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+}
+```
+
+The `request_id` in error responses:
+- Is the **same** UUID generated at middleware layer for that HTTP request.
+- Is a safe UUID — it never contains, echoes, or reflects any user query text, credentials, or internal paths.
+
+---
+
+### 8.4 Execution Time Measurement
+
+- Measured with `time.perf_counter()` (monotonic wall-clock timer).
+- Starts at the beginning of `RetrievalService.query()` (after request ID generation).
+- Stops after all filtering, pagination, and metadata assembly.
+- Reported in **milliseconds** rounded to 3 decimal places.
+- Always `>= 0`. Cache-hit requests still report a small but non-negative execution time for the query dispatch overhead.
+- **Not** a substitute for external APM instrumentation; it measures retrieval logic time only.
+
+---
+
+### 8.5 Cache Observability
+
+| `cache_hit` Value | Meaning |
+|---|---|
+| `false` | Records were loaded from `retrieval_ready_records.json` on disk for this request. |
+| `true` | Records were already in the `RetrievalService` in-memory cache from a prior request. |
+
+Cache behavior itself is **unchanged** from Weeks 3–4. Day 7 only adds observability reporting of whether the current request benefited from the cache.
+
+---
+
+### 8.6 Structured Safe Logging
+
+The retrieval query endpoint emits a structured log line for every request containing only safe metadata:
+
+```
+retrieval_query request_id=<uuid> endpoint=/api/retrieval/query method=POST
+status=200 execution_ms=4.22 results=5 total_matches=12 cache_hit=True page=1 page_size=5
+```
+
+**Logged:** `request_id`, HTTP method, endpoint path, HTTP status code, `execution_ms`, result count, `total_matches`, `cache_hit`, `page`, `page_size`.
+
+**Never logged:**
+- Query text (`query` / `query_text`)
+- API keys or tokens
+- Environment variable values
+- Database connection strings
+- Local filesystem paths
+- Python tracebacks
+
+---
+
+### 8.7 Backward Compatibility
+
+The `metadata` field is **additive only**:
+- Existing clients that do not read `metadata` are unaffected.
+- All pre-existing response fields (`query`, `total_matches`, `returned_count`, `page`, `page_size`, `total_pages`, `has_next`, `has_previous`, `results`, `applied_filters`, `generated_at`) are unchanged.
+- Existing error response `detail` messages are unchanged.
+- All Day 6 input validation (422 responses) continues to function identically.
