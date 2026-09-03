@@ -1,6 +1,6 @@
 {
-  "pipeline_name": "Week 3 — Temporal Retrieval Preparation",
-  "input_source": "D:\\ChronoGraph\\data-ingestion\\data\\processed\\graph_ready_triples.json",
+  "pipeline_name": "Temporal Retrieval Preparation",
+  "input_source": "data/processed/graph_ready_triples.json",
   "total_records": 142,
   "records_built": 142,
   "skipped_records": 0,

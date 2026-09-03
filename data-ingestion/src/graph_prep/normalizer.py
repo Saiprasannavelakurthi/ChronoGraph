@@ -1,7 +1,7 @@
 """
 src/graph_prep/normalizer.py
 ─────────────────────────────
-Week 2 – Entity, Relation, and Timestamp Normalization (Karkuvel's module).
+Entity, Relation, and Timestamp Normalization.
 
 Normalisation philosophy
 ─────────────────────────

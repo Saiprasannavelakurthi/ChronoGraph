@@ -1,7 +1,7 @@
 """
 dags/chronograph_ingestion_dag.py
 ──────────────────────────────────
-Airflow DAG for ChronoGraph Week 1 + Week 2 (Karkuvel's graph preparation).
+Airflow DAG for ChronoGraph Ingestion & Graph Preparation Pipeline.
 
 Pipeline
 ────────
@@ -27,24 +27,17 @@ save_normalized_events_task ← writes data/processed/normalized_events.json
 extract_triples_task     ← TemporalTripleExtractor: LLM or fallback
     │
     ▼
-prepare_graph_data_task  ← Karkuvel: validate + normalize + deduplicate
+prepare_graph_data_task  ← validate + normalize + deduplicate
     │                        writes graph_ready_triples.json
     ▼
 end_task
 
-Week 1 scope:
+Scope:
   ✅ All ingestion tasks
-  ✅ Preprocessing/normalisation
+  ✅ Preprocessing / normalisation
   ✅ Triple extraction
-
-Week 2 scope (Karkuvel – Data Integration & Graph-Ready Pipeline):
   ✅ prepare_graph_data_task: validate, normalize & deduplicate triples
-  ✅ Outputs graph_ready_triples.json for Saiprasanna's Neo4j module
-
-Out of scope (other team members):
-  ❌ Neo4j graph construction (Saiprasanna – Week 2)
-  ❌ Temporal RAG retrieval (Vembarasan/Nagarajan – Week 3+)
-  ❌ React/UI/visualization (Vembarasan/Nagarajan)
+  ✅ Outputs graph_ready_triples.json for graph database ingestion
 
 Setup
 ─────
@@ -63,7 +56,7 @@ Then copy this file to $AIRFLOW_HOME/dags/ or set AIRFLOW__CORE__DAGS_FOLDER
 to point to the /dags directory in this project.
 
 Run a manual trigger:
-  airflow dags trigger chronograph_week1_ingestion
+  airflow dags trigger chronograph_ingestion_pipeline
 """
 
 from __future__ import annotations
@@ -289,15 +282,15 @@ def task_extract_triples(**context) -> dict:
 
 def task_prepare_graph_data(**context) -> dict:
     """
-    Week 2 Task (Karkuvel): Validate, normalize & deduplicate extracted triples.
+    Task: Validate, normalize & deduplicate extracted triples.
 
     Reads  : data/processed/extracted_triples.json
     Writes :
-        data/processed/graph_ready_triples.json  (Neo4j-ready contract)
+        data/processed/graph_ready_triples.json  (graph-ready contract)
         data/processed/graph_prep_summary.json   (stats + audit log)
 
     This task does NOT connect to Neo4j.  Its output file is the
-    integration contract for Saiprasanna's Neo4j loading module.
+    integration contract for downstream graph loading.
     """
     settings = _get_settings()
     from src.graph_prep.pipeline import GraphPrepPipeline
@@ -338,17 +331,17 @@ def task_prepare_graph_data(**context) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 with DAG(
-    dag_id="chronograph_week1_ingestion",
+    dag_id="chronograph_ingestion_pipeline",
     default_args=DEFAULT_ARGS,
     description=(
-        "ChronoGraph Week 1 + Week 2 (Karkuvel): Ingest enterprise data "
-        "(Slack/GitHub/Jira), normalise events, extract temporal knowledge-graph "
-        "triples, then validate/normalise/deduplicate for graph-ready output."
+        "ChronoGraph: Ingest enterprise data (Slack/GitHub/Jira), "
+        "normalise events, extract temporal knowledge-graph triples, "
+        "then validate/normalise/deduplicate for graph-ready output."
     ),
     schedule_interval="@daily",          # run daily; trigger manually for demo
     start_date=datetime(2024, 1, 1),
     catchup=False,
-    tags=["chronograph", "week1", "week2", "ingestion", "extraction", "graph-prep"],
+    tags=["chronograph", "ingestion", "extraction", "graph-prep"],
     max_active_runs=1,
 ) as dag:
 
@@ -402,7 +395,7 @@ def run_pipeline_standalone() -> None:
     Used by ``python main.py --run-all`` and for CI/CD environments
     where Airflow may not be installed.
     """
-    logger.info("=== ChronoGraph Week 1 + Week 2 Pipeline (Standalone) ===")
+    logger.info("=== ChronoGraph Ingestion Pipeline (Standalone) ===")
 
     steps = [
         ("load_slack",           task_load_slack),
@@ -410,7 +403,7 @@ def run_pipeline_standalone() -> None:
         ("load_jira",            task_load_jira),
         ("preprocess_normalize", task_preprocess_normalize),
         ("extract_triples",      task_extract_triples),
-        ("prepare_graph_data",   task_prepare_graph_data),   # Week 2 (Karkuvel)
+        ("prepare_graph_data",   task_prepare_graph_data),
     ]
 
     results = {}

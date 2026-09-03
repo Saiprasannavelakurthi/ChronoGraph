@@ -1,10 +1,10 @@
 """
 config/settings.py
 ──────────────────
-Centralised configuration for ChronoGraph Week 1.
+Centralised configuration for ChronoGraph.
 
 All values are read from environment variables (or a `.env` file).
-No secrets are hard-coded here – copy `.env.example` → `.env` and fill in
+No secrets are hard-coded here – copy `.env.example` → `.env` and fill
 your values before running the project.
 """
 
@@ -84,7 +84,23 @@ class Settings(BaseSettings):
     # ── API ───────────────────────────────────────────────────────────────────
     api_host: str = Field(default="0.0.0.0")
     api_port: int = Field(default=8000)
-    api_reload: bool = Field(default=True)
+    api_reload: bool = Field(
+        default=False,
+        description="Enable Uvicorn hot-reload. Set True for local development only.",
+    )
+    cors_origins: str = Field(
+        default="http://localhost:3000,http://localhost:5173",
+        description=(
+            "Comma-separated list of allowed CORS origins. "
+            "Use '*' only for local development. "
+            "Never use '*' with allow_credentials=True in production."
+        ),
+    )
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parse cors_origins string into a list of origin strings."""
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     # ── Extraction ────────────────────────────────────────────────────────────
     extraction_max_events: int = Field(
@@ -124,27 +140,27 @@ class Settings(BaseSettings):
 
     @property
     def graph_ready_triples_path(self) -> Path:
-        """Week 2 graph-ready output (consumed by Saiprasanna's Neo4j module)."""
+        """Graph-ready triple output consumed by the Neo4j ingestion module."""
         return self.processed_data_dir / "graph_ready_triples.json"
 
     @property
     def graph_prep_summary_path(self) -> Path:
-        """Week 2 graph preparation summary report."""
+        """Graph preparation pipeline execution summary."""
         return self.processed_data_dir / "graph_prep_summary.json"
 
     @property
     def retrieval_ready_records_path(self) -> Path:
-        """Week 3 retrieval-ready records output (data contract file)."""
+        """Retrieval-ready records output (data contract file)."""
         return self.processed_data_dir / "retrieval_ready_records.json"
 
     @property
     def retrieval_prep_summary_path(self) -> Path:
-        """Week 3 pipeline execution metadata summary."""
+        """Temporal retrieval preparation pipeline execution summary."""
         return self.processed_data_dir / "retrieval_prep_summary.json"
 
     @property
     def retrieval_quality_stats_path(self) -> Path:
-        """Week 3 retrieval data quality and coverage statistics."""
+        """Retrieval data quality and coverage statistics."""
         return self.processed_data_dir / "retrieval_quality_stats.json"
 
 

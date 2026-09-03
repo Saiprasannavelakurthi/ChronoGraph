@@ -1,17 +1,17 @@
-# Week 4 — Retrieval Query API Contract
+# ChronoGraph — Retrieval Query API Contract
 
-**Module Owner**: Karkuvel (`data-ingestion` branch)  
-**Contract Version**: Week 4.0  
+**Owner**: Data Ingestion & Temporal Retrieval Pipeline  
+**Contract Version**: 1.0.0  
 **Service Layer**: `src/retrieval/service.py` → `RetrievalService`  
 **API Router / App**: `src/api/app.py`  
 **Consumes**: `data/processed/retrieval_ready_records.json` & `data/processed/retrieval_quality_stats.json`  
-**CLI Startup**: `python main.py --start-api` or `python main.py --serve-api`
+**CLI Startup**: `python main.py --start-api`
 
 ---
 
 ## 1. Overview
 
-The **Week 4 Temporal Retrieval Query API** exposes the pre-processed, citation-ready evidence records produced by the Week 3 retrieval pipeline over a standardized, high-performance REST interface.
+The **Temporal Retrieval Query API** exposes pre-processed, citation-ready evidence records produced by the retrieval preparation pipeline over a standardized, high-performance REST interface.
 
 It allows downstream components (such as the Temporal Routing Layer, GraphRAG Query Engine, or UI Frontend) to execute granular temporal and entity queries with chronological sorting and pagination guarantees.
 
@@ -269,7 +269,7 @@ The ChronoGraph Retrieval API enforces secure, consistent error handling without
 
 ---
 
-## 7. Request Validation Limits (Week 4 Day 6)
+## 7. Request Validation Limits
 
 All request validation is enforced by Pydantic at the FastAPI layer before any business logic executes. Invalid requests return `HTTP 422 Unprocessable Entity`.
 
@@ -324,9 +324,9 @@ API responses at all times:
 
 ---
 
-## 8. Observability & Audit Metadata (Week 4 Day 7)
+## 8. Observability & Audit Metadata
 
-Every successful `POST /api/retrieval/query` response now includes a `metadata` field providing per-request tracing information.
+Every successful `POST /api/retrieval/query` response includes a `metadata` field providing per-request tracing information.
 
 ### 8.1 `RetrievalRequestMetadata` — Response Field
 
@@ -425,7 +425,7 @@ The `request_id` in error responses:
 | `false` | Records were loaded from `retrieval_ready_records.json` on disk for this request. |
 | `true` | Records were already in the `RetrievalService` in-memory cache from a prior request. |
 
-Cache behavior itself is **unchanged** from Weeks 3–4. Day 7 only adds observability reporting of whether the current request benefited from the cache.
+Cache behavior itself is preserved. Observability reporting indicates whether the current request benefited from the in-memory cache.
 
 ---
 

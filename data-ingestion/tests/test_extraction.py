@@ -7,7 +7,7 @@ Tests cover:
   - Pydantic schema validation (RawEvent, Triple, ExtractionResult)
   - FallbackExtractor: deterministic rule-based extraction
   - TemporalTripleExtractor: mock-mode (no LLM required)
-  - Triple.to_neo4j_dict() output format (Week 2 contract)
+  - Triple.to_neo4j_dict() output format (graph ingestion contract)
   - Batch extraction and output file generation
 """
 

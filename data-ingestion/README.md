@@ -21,7 +21,7 @@
 - [Installation & Setup](#-installation--setup)
 - [Configuration](#-configuration)
 - [Usage & CLI Reference](#-usage--cli-reference)
-- [FastAPI REST Service & Week 4 Retrieval API](#-fastapi-rest-service--week-4-retrieval-api)
+- [FastAPI REST Service & Temporal Retrieval API](#-fastapi-rest-service--temporal-retrieval-api)
 - [Airflow Orchestration](#-airflow-orchestration)
 - [Testing](#-testing)
 - [Pipeline Metrics & Summary](#-pipeline-metrics--summary)
@@ -49,7 +49,7 @@ Modern engineering organizations produce massive volumes of decision history acr
                      ↓
          extracted_triples.json
                      ↓
-          GraphPrepPipeline (Week 2)
+          GraphPrepPipeline
                      ↓
          Validation + Normalization
                      ↓
@@ -57,11 +57,11 @@ Modern engineering organizations produce massive volumes of decision history acr
                      ↓
          graph_ready_triples.json
                      ↓
-       RetrievalRecordBuilder (Week 3)
+       RetrievalRecordBuilder
                      ↓
-       retrieval_ready_records.json
+        retrieval_ready_records.json
                      ↓
-       RetrievalService & API (Week 4)
+       RetrievalService & API
                      ↓
          TemporalFilterEngine
                      ↓
@@ -97,18 +97,18 @@ data-ingestion/
 │       ├── normalized_events.json    # Output of Ingestion Pipeline
 │       ├── extracted_triples.json    # Output of Extraction Pipeline
 │       ├── graph_ready_triples.json  # Output of Graph Preparation Pipeline
-│       ├── graph_prep_summary.json   # Week 2 pipeline execution summary
+│       ├── graph_prep_summary.json   # Graph preparation execution summary
 │       ├── retrieval_ready_records.json # Output of Retrieval Preparation Pipeline
-│       ├── retrieval_prep_summary.json  # Week 3 pipeline execution metadata
-│       └── retrieval_quality_stats.json # Week 3 data quality & coverage statistics
+│       ├── retrieval_prep_summary.json  # Retrieval preparation execution metadata
+│       └── retrieval_quality_stats.json # Retrieval data quality & coverage statistics
 ├── docs/
 │   ├── GRAPH_DATA_CONTRACT.md        # Graph-ready data schema specification
 │   ├── RETRIEVAL_DATA_CONTRACT.md    # Retrieval-ready data schema specification
-│   └── RETRIEVAL_API_CONTRACT.md     # Week 4 Retrieval API OpenAPI / REST specification
+│   └── RETRIEVAL_API_CONTRACT.md     # Retrieval API OpenAPI / REST specification
 ├── src/
 │   ├── api/
 │   │   ├── __init__.py
-│   │   └── app.py                    # FastAPI endpoints (ingestion, graph, Week 4 retrieval API)
+│   │   └── app.py                    # FastAPI REST endpoints
 │   ├── extraction/
 │   │   ├── __init__.py
 │   │   ├── extractor.py              # LlamaIndex + Groq extractor with fallback logic
@@ -130,22 +130,22 @@ data-ingestion/
 │   ├── retrieval/
 │   │   ├── __init__.py               # Public exports (models, builder, filter engine, validator, stats, service, errors)
 │   │   ├── builder.py                # Builds RetrievalRecord list + writes execution metadata
-│   │   ├── errors.py                 # Retrieval domain exception hierarchy (RetrievalDataNotFoundError, RetrievalDataFormatError, etc.)
+│   │   ├── errors.py                 # Retrieval domain exception hierarchy
 │   │   ├── filter.py                 # In-memory chronological, entity, & free-text ranking filter engine
-│   │   ├── models.py                 # RetrievalRecord, TemporalFilter, RetrievalRequest, RetrievalQueryRequest, RetrievalQueryResponse, RetrievalHealthResponse
-│   │   ├── service.py                # Week 4 RetrievalService orchestrating safe loading, caching, filtering & API querying
-│   │   ├── stats.py                  # Data quality and coverage statistics engine (RetrievalStatsEngine)
-│   │   └── validator.py              # Post-build consistency validator (RetrievalOutputValidator)
+│   │   ├── models.py                 # Pydantic schemas and observability models
+│   │   ├── service.py                # RetrievalService orchestrating safe loading, caching, filtering & querying
+│   │   ├── stats.py                  # Data quality and coverage statistics engine
+│   │   └── validator.py              # Post-build consistency validator
 │   └── schemas/
 │       ├── __init__.py
 │       └── graph.py                  # Pydantic schemas (RawEvent, Triple, ExtractedGraph)
 └── tests/
     ├── __init__.py
-    ├── test_extraction.py            # Extraction & fallback unit tests (Week 1)
-    ├── test_graph_prep.py            # Validation, normalization & deduplication tests (Week 2)
-    ├── test_ingestion.py             # Loader & ingestion pipeline tests (Week 1)
-    ├── test_retrieval.py             # Retrieval preparation, builder, and filter tests (Week 3)
-    └── test_retrieval_api.py         # RetrievalService & FastAPI query endpoints tests (Week 4)
+    ├── test_extraction.py            # Extraction & fallback unit tests
+    ├── test_graph_prep.py            # Validation, normalization & deduplication tests
+    ├── test_ingestion.py             # Loader & ingestion pipeline tests
+    ├── test_retrieval.py             # Retrieval preparation, builder, and filter tests
+    └── test_retrieval_api.py         # RetrievalService & FastAPI query endpoints tests
 ```
 │   └── RETRIEVAL_DATA_CONTRACT.md    # Retrieval-ready data schema specification
 ├── src/
@@ -194,7 +194,7 @@ data-ingestion/
 
 ### Implemented Modules
 
-#### Week 1: Multi-Source Ingestion & Extraction
+#### Multi-Source Ingestion & Extraction
 - **Multi-Source Ingestion**: Data loaders for Slack messages, GitHub PRs/issues, and Jira tickets.
 - **Data Preprocessing**: ISO-8601 UTC timestamp normalization and text cleaning.
 - **Airflow Orchestration**: Automated DAG scheduling (`chronograph_ingestion_dag.py`).
@@ -203,7 +203,7 @@ data-ingestion/
 - **Triple Extraction**: Extraction of subject, relation, object, timestamp, source, and evidence.
 - **Fallback Extraction**: Rule-based regex heuristic engine (`extraction_mode = "fallback"`) ensuring robust execution without external API dependencies.
 
-#### Week 2: Graph-Ready Data Preparation
+#### Graph-Ready Data Preparation
 - **Triple Validation**: Schema validation, required field enforcement, timestamp ISO-8601 validation, and score bounding.
 - **Entity Normalization**: Standardizing entity names into canonical `snake_case` while preserving original display names and entity types.
 - **Relation Normalization**: Mapping relationship labels to canonical uppercase categories (e.g. `ADVOCATED_FOR`, `MIGRATED_TO`, `REVIEWED`).
@@ -213,7 +213,7 @@ data-ingestion/
 - **Graph Preparation Summary**: Generating `data/processed/graph_prep_summary.json` containing pipeline statistics.
 - **Data Contract**: Establishing the formal contract for graph integration ([`docs/GRAPH_DATA_CONTRACT.md`](docs/GRAPH_DATA_CONTRACT.md)).
 
-#### Week 3: Temporal Retrieval Preparation
+#### Temporal Retrieval Preparation
 - **RetrievalRecord Model**: Citation-ready evidence unit retaining complete provenance (`source`, `source_id`, `source_url`, `evidence`, `timestamp`, `event_date`, `confidence`).
 - **TemporalFilter Model**: Chronological filter specification supporting `exact`, `range`, `before`, and `after` modes with automatic mode detection.
 - **RetrievalRequest Schema**: Lightweight filter schema packaging natural-language queries, entity hints, relation hints, temporal bounds, source filters, limit, and sort direction.
@@ -224,9 +224,9 @@ data-ingestion/
 - **RetrievalStatsEngine**: Computes data quality and coverage statistics (`unique_entities`, `unique_relations`, `source_breakdown`, `average_confidence`) into `retrieval_quality_stats.json`.
 - **Data Contract**: Formal specification for temporal retrieval records and execution metadata ([`docs/RETRIEVAL_DATA_CONTRACT.md`](docs/RETRIEVAL_DATA_CONTRACT.md)).
 
-#### Week 4: Temporal Retrieval Query API & Error Resilience
+#### Temporal Retrieval Query API & Error Resilience
 - **RetrievalService Layer**: Service layer in `src/retrieval/service.py` that loads, validates, and caches `retrieval_ready_records.json`, normalizes queries, executes multi-dimensional filtering and relevance scoring via `TemporalFilterEngine`, computes total matches before limits, and formats structured responses.
-- **Resilient Error Handling (Day 4)**:
+- **Resilient Error Handling**:
   - Custom domain exceptions (`RetrievalDataNotFoundError`, `RetrievalDataFormatError`, `RetrievalServiceError`) mapped to safe HTTP 404/500 responses without exposing local filesystem paths, database credentials, or stack traces.
   - Resilient cache management ensuring that previously valid cached records are preserved and remain queryable even if a reload attempt fails.
   - Partial file corruption tolerance skipping malformed individual records with warning logs.
@@ -234,7 +234,7 @@ data-ingestion/
   - `GET /api/health` — Health check reporting service status, data availability on disk, and total record count.
   - `POST /api/retrieval/query` — Flexible temporal retrieval endpoint accepting natural language queries, entity hints, relation labels, source filters, date ranges/bounds, sorting, and pagination with full provenance.
   - `GET /api/retrieval/stats` — Retrieval quality and coverage statistics.
-- **API Security & Input Validation (Day 6)**:
+- **API Security & Input Validation**:
   - **Query length limit**: `query` / `query_text` capped at 2 000 characters.
   - **List size limits**: `entity_hints`, `entities`, `relation_hints` each capped at 50 items.
   - **Source allowlist**: Only `"slack"`, `"github"`, `"jira"` accepted; unknown values return HTTP 422.
@@ -242,7 +242,7 @@ data-ingestion/
   - **Date validation**: Malformed date strings and inverted date ranges return HTTP 422.
   - **Text input safety**: Query strings treated purely as data — never interpolated into SQL, Cypher, shell commands, or filesystem paths.
   - **Response safety**: Error responses never expose filesystem paths, environment variables, API keys, or Python tracebacks.
-- **CLI Integration**: FastAPI server startup via `python main.py --start-api` or `python main.py --serve-api`.
+- **CLI Integration**: FastAPI server startup via `python main.py --start-api`.
 - **API Contract**: Full REST / OpenAPI specification in [`docs/RETRIEVAL_API_CONTRACT.md`](docs/RETRIEVAL_API_CONTRACT.md).
 
 ---
@@ -255,23 +255,23 @@ data-ingestion/
 2. **LLM-Powered Temporal Extraction**
    - Powered by **LlamaIndex** with **Groq** (`llama-3.1-8b-instant`), **OpenAI**, or **Ollama** support.
    - Robust **Heuristic Fallback Engine** (`extraction_mode = "fallback"`) ensuring zero pipeline failures even when offline or unauthenticated.
-3. **Graph Preparation & Integration (Week 2)**
+3. **Graph Preparation & Integration**
    - **Validation**: Enforces mandatory fields, valid ISO timestamps, UUID stability, and confidence score bounds.
    - **Normalization**: Standardizes entity names to canonical `snake_case` while retaining original display names. Normalizes relations into canonical types.
    - **Deduplication**: Resolves duplicate triples across multiple sources and retains maximum evidence and confidence score.
    - **Graph-Ready Output**: Produces `data/processed/graph_ready_triples.json`.
-4. **Temporal Retrieval Preparation (Week 3)**
+4. **Temporal Retrieval Preparation**
    - **Provenance-Preserving Records**: Generates `RetrievalRecord` units preserving exact source IDs and URLs for verifiable UI citations.
    - **Chronological Indexing**: Extracts UTC calendar `event_date` for high-performance temporal filtering.
    - **Flexible In-Memory Filtering**: Supports exact date, inclusive range, exclusive before/after, entity matching, relation filtering, and ASC/DESC chronological sorting.
    - **Retrieval-Ready Output**: Produces `data/processed/retrieval_ready_records.json`.
    - **Pipeline Execution Metadata**: Emits `data/processed/retrieval_prep_summary.json` containing execution metrics.
-5. **Temporal Retrieval Query API (Week 4)**
+5. **Temporal Retrieval Query API**
    - **REST Query Interface**: Structured querying over REST (`POST /api/retrieval/query`).
    - **Multi-Filter Support**: Combined entity, relation, source system, and chronological boundary filters.
    - **FastAPI Validation**: Strict request schema validation with Pydantic.
    - **Zero Knowledge Loss**: Preserves complete evidence strings, timestamps, and source URLs in every query response.
-6. **API Security & Input Validation (Week 4 Day 6)**
+6. **API Security & Input Validation**
    - **Request size limits**: Query strings capped at 2 000 chars; hint lists capped at 50 items each.
    - **Source allowlist enforcement**: Only `slack`, `github`, and `jira` are accepted; invalid values return HTTP 422.
    - **Numeric bounds**: `page` (1–9 999), `page_size` (1–100), `limit` (1–1 000) all validated by Pydantic.
@@ -286,7 +286,7 @@ data-ingestion/
 
 ## 🏗️ Architecture & Data Pipelines
 
-### Week 2 Pipeline: Graph Preparation
+### Graph Preparation Pipeline
 ```
 normalized_events.json
         ↓
@@ -313,7 +313,7 @@ python main.py --prepare-graph
 - `142` valid triples (`0` invalid)
 - `0` duplicates removed
 
-### Week 3 Pipeline: Temporal Retrieval Preparation
+### Temporal Retrieval Preparation Pipeline
 ```
 graph_ready_triples.json
         ↓
@@ -334,7 +334,7 @@ python main.py --prepare-retrieval
 - `0` skipped records
 - `status: success`
 
-### Week 4 Pipeline: Temporal Retrieval API Layer
+### Temporal Retrieval API Layer
 ```
 HTTP Request
     ↓
@@ -360,7 +360,7 @@ Structured RetrievalQueryResponse
 
 - **Graph Data Contract**: [`docs/GRAPH_DATA_CONTRACT.md`](docs/GRAPH_DATA_CONTRACT.md) defines the schema for `graph_ready_triples.json`.
 - **Retrieval Data Contract**: [`docs/RETRIEVAL_DATA_CONTRACT.md`](docs/RETRIEVAL_DATA_CONTRACT.md) defines the schema for `retrieval_ready_records.json`, `RetrievalRequest`, and `retrieval_prep_summary.json`.
-- **Retrieval API Contract**: [`docs/RETRIEVAL_API_CONTRACT.md`](docs/RETRIEVAL_API_CONTRACT.md) defines the REST endpoints, schemas, and error contracts for Week 4.
+- **Retrieval API Contract**: [`docs/RETRIEVAL_API_CONTRACT.md`](docs/RETRIEVAL_API_CONTRACT.md) defines the REST endpoints, schemas, and error contracts.
 
 ---
 
@@ -436,29 +436,23 @@ The unified CLI entrypoint `main.py` provides commands for executing pipeline st
 ### Pipeline Execution Commands
 
 ```bash
-# Week 1 — Run Data Ingestion (Slack + GitHub + Jira -> normalized_events.json)
+# Run Data Ingestion (Slack + GitHub + Jira -> normalized_events.json)
 python main.py --ingest
 
-# Week 1 — Run Triple Extraction (normalized_events.json -> extracted_triples.json)
+# Run Triple Extraction (normalized_events.json -> extracted_triples.json)
 python main.py --extract
 
-# Week 1 — Run Full Week 1 Pipeline (Ingest + Extract)
+# Run Full Ingestion & Extraction Pipeline
 python main.py --run-all
 
-# Week 2 — Run Graph Preparation (validate + normalize + deduplicate -> graph_ready_triples.json)
+# Run Graph Preparation (validate + normalize + deduplicate -> graph_ready_triples.json)
 python main.py --prepare-graph
 
-# Week 2 — Run Full Week 2 Pipeline (Ingest + Extract + Graph Preparation)
-python main.py --run-week2-data
-
-# Week 3: Build retrieval-ready records from graph_ready_triples.json
+# Build retrieval-ready records from graph_ready_triples.json
 python main.py --prepare-retrieval
 
-# Week 3: Compute data quality statistics from retrieval_ready_records.json
+# Compute data quality statistics from retrieval_ready_records.json
 python main.py --retrieval-stats
-
-# Week 3: Full pipeline — ingest -> extract -> graph prep -> retrieval prep
-python main.py --run-week3-data
 ```
 
 ### Inspection & API Server Commands
@@ -470,29 +464,27 @@ python main.py --export-json
 # Validate Airflow DAG import syntax
 python main.py --validate-dag
 
-# Start FastAPI server on :8000 (Week 4 Retrieval API)
+# Start FastAPI server on :8000
 python main.py --start-api
-# or alias:
-python main.py --serve-api
 ```
 
 ---
 
-## 🌐 FastAPI REST Service & Week 4 Retrieval API
+## 🌐 FastAPI REST Service & Temporal Retrieval API
 
 Start the interactive API server using CLI or `uvicorn`:
 
 ```bash
 python main.py --start-api
 # or:
-uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
+uvicorn src.api.app:app --host 0.0.0.0 --port 8000
 ```
 
 Once running, access the interactive OpenAPI / Swagger UI at:
 - **Swagger Documentation:** `http://localhost:8000/docs`
 - **ReDoc Documentation:** `http://localhost:8000/redoc`
 
-### Week 4 Primary API Endpoints
+### Primary API Endpoints
 
 #### 1. Health & Data Availability (`GET /api/health`)
 
@@ -615,17 +607,17 @@ python -m pytest tests/ -q
 
 ### Verified Test Status
 - **520 passed** tests across 5 test modules:
-  - `tests/test_ingestion.py` — Ingestion loaders, preprocessing, and normalization (Week 1)
-  - `tests/test_extraction.py` — LlamaIndex/Groq extraction and heuristic fallbacks (Week 1)
-  - `tests/test_graph_prep.py` — Graph preparation validation, normalization, and deduplication (Week 2)
-  - `tests/test_retrieval.py` — RetrievalRecordBuilder, TemporalFilterEngine, models, RetrievalOutputValidator, RetrievalStatsEngine, and RetrievalDataQualityStats (Week 3)
-  - `tests/test_retrieval_api.py` — RetrievalService unit tests, FastAPI query endpoints, pagination, free-text ranking, and error resilience (Week 4)
+  - `tests/test_ingestion.py` — Ingestion loaders, preprocessing, and normalization
+  - `tests/test_extraction.py` — LlamaIndex/Groq extraction and heuristic fallbacks
+  - `tests/test_graph_prep.py` — Graph preparation validation, normalization, and deduplication
+  - `tests/test_retrieval.py` — RetrievalRecordBuilder, TemporalFilterEngine, models, RetrievalOutputValidator, RetrievalStatsEngine, and RetrievalDataQualityStats
+  - `tests/test_retrieval_api.py` — RetrievalService unit tests, FastAPI query endpoints, pagination, free-text ranking, and error resilience
 
 ---
 
 ## 📈 Pipeline Metrics & Summary
 
-### Week 2: Graph Preparation Metrics (`data/processed/graph_prep_summary.json`)
+### Graph Preparation Metrics (`data/processed/graph_prep_summary.json`)
 - **Total Input Triples:** `142`
 - **Valid Triples Output:** `142`
 - **Invalid Triples:** `0`
@@ -645,7 +637,7 @@ python -m pytest tests/ -q
   - `ASSIGNED_TO`: 3
   - `DEPRECATED`: 3
 
-### Week 3: Retrieval Preparation Metrics (`data/processed/retrieval_ready_records.json`)
+### Retrieval Preparation Metrics (`data/processed/retrieval_ready_records.json`)
 - **Total Graph-Ready Input:** `142`
 - **Retrieval Records Built:** `142`
 - **Records Skipped:** `0`
@@ -655,12 +647,12 @@ python -m pytest tests/ -q
   - **GitHub:** `40` records
 - **Date Range:** `2023-03-15` → `2023-05-30`
 
-### Week 4: Temporal Retrieval API Metrics
+### Temporal Retrieval API Metrics
 - **Retrieval Ready Pool:** `142` validated records
 - **Supported Filter Modes:** Exact Date, Date Range (inclusive), Before Date (exclusive), After Date (exclusive), Entity Matching, Relation Filtering, Source Filtering
 - **Provenance Coverage:** 100% of records retain source system, native ID, verbatim evidence, and UTC event timestamp
 
-### Week 4 Day 7: Observability & Audit Metadata
+### Observability & Audit Metadata
 
 Every successful `POST /api/retrieval/query` response now carries a `metadata` field:
 

@@ -1,7 +1,7 @@
 """
 src/graph_prep/pipeline.py
 ───────────────────────────
-Week 2 – Graph-Ready Data Pipeline (Karkuvel's module).
+Graph-Ready Data Pipeline.
 
 Orchestrates the full graph preparation flow:
 
@@ -70,7 +70,7 @@ class GraphPrepPipeline:
 
     Parameters
     ──────────
-    input_path  : Path to extracted_triples.json (Week 1 output).
+    input_path  : Path to extracted_triples.json.
     output_path : Destination for graph_ready_triples.json.
     summary_path: Destination for graph_prep_summary.json.
 
@@ -298,9 +298,9 @@ class GraphPrepPipeline:
 
         return {
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "pipeline_stage": "Week 2 – Graph Preparation (Karkuvel)",
-            "input_file": str(self.input_path),
-            "output_file": str(self.output_path),
+            "pipeline_stage": "Graph Preparation",
+            "input_file": str(self.input_path).replace("\\", "/"),
+            "output_file": str(self.output_path).replace("\\", "/"),
             "statistics": {
                 "total_input_triples": val_report.total_input,
                 "valid_triples": val_report.valid_count,

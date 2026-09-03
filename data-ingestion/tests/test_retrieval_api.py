@@ -1,7 +1,7 @@
 """
 tests/test_retrieval_api.py
 ───────────────────────────
-Week 4 — Test suite for Temporal Retrieval Service & FastAPI Endpoints.
+Test suite for Temporal Retrieval Service & FastAPI Endpoints.
 
 Coverage:
   1. Direct unit tests for RetrievalService
@@ -231,7 +231,7 @@ class TestRetrievalService:
         assert resp.results[0].object == "gcp"
         assert resp.query == "When did Arun suggest GCP?"
 
-    def test_query_with_week3_retrieval_request(self, temp_records_file: Path) -> None:
+    def test_query_with_retrieval_request(self, temp_records_file: Path) -> None:
         service = RetrievalService(records_path=temp_records_file)
         req = RetrievalRequest(
             query_text="Find GCP migrations",
@@ -264,7 +264,7 @@ class TestRetrievalService:
     def test_get_health_when_file_missing(self, tmp_path: Path) -> None:
         service = RetrievalService(records_path=tmp_path / "missing.json")
         health = service.get_health()
-        assert health.status == "ok"
+        assert health.status == "degraded"
         assert health.retrieval_data_available is False
         assert health.retrieval_records_count is None
 
@@ -305,7 +305,7 @@ class TestApiHealthEndpoint:
             RetrievalService,
             "get_health",
             return_value=RetrievalHealthResponse(
-                status="ok",
+                status="degraded",
                 retrieval_data_available=False,
                 retrieval_records_count=None,
             ),
@@ -313,6 +313,7 @@ class TestApiHealthEndpoint:
             response = client.get("/api/health")
             assert response.status_code == 200
             data = response.json()
+            assert data["status"] == "degraded"
             assert data["retrieval_data_available"] is False
             assert data["retrieval_records_count"] is None
 
@@ -572,7 +573,7 @@ class TestApiRetrievalStatsEndpoint:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 5. Retrieval API Pagination & Performance Tests (Week 4 Day 2)
+# 5. Retrieval API Pagination & Performance Tests
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -747,7 +748,7 @@ class TestApiPagination:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 6. Week 4 Day 3 Free-Text Query API Endpoint Tests
+# 6. Free-Text Query API Endpoint Tests
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -889,12 +890,12 @@ class TestApiFreeTextQueryEndpoint:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 7. Week 4 Day 4 Error Handling & Resilience Tests
+# 7. Error Handling & Resilience Tests
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 class TestRetrievalErrorHandlingAndResilience:
-    """Comprehensive test suite for Week 4 Day 4 Error Handling & Resilience."""
+    """Comprehensive test suite for Error Handling & Resilience."""
 
     def test_missing_retrieval_file_exception(self, tmp_path: Path) -> None:
         non_existent = tmp_path / "missing_records.json"
@@ -1103,7 +1104,7 @@ class TestRetrievalErrorHandlingAndResilience:
         unreadable_file.write_text("invalid json", encoding="utf-8")
         service = RetrievalService(records_path=unreadable_file)
         health = service.get_health()
-        assert health.status == "ok"
+        assert health.status == "degraded"
         assert health.retrieval_data_available is True
         assert health.retrieval_records_count is None
     def test_successful_retrieval_behavior_remains_unchanged(self) -> None:
@@ -1134,7 +1135,7 @@ class TestRetrievalErrorHandlingAndResilience:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 8. Week 4 Day 5 — Performance & Cache Regression Tests
+# 8. Performance & Cache Regression Tests
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -1446,12 +1447,12 @@ class TestRetrievalPerformanceCacheRegression:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 9. Week 4 Day 5 — API Endpoint Regression Tests
+# 9. API Endpoint Regression Tests
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 class TestApiRetrievalRegression:
-    """Verify that all existing endpoints continue to behave correctly after Day 5 changes."""
+    """Verify that all existing endpoints continue to behave correctly."""
 
     def test_health_endpoint_still_returns_ok(self) -> None:
         resp = client.get("/api/health")
@@ -1549,13 +1550,13 @@ class TestApiRetrievalRegression:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 10. Week 4 Day 6 — Security & Input Validation Tests
+# 10. Security & Input Validation Tests
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 class TestApiSecurityAndInputValidation:
     """
-    Security and input validation tests for Week 4 Day 6.
+    Security and input validation tests.
 
     Verifies that:
     - Oversized / malformed inputs are rejected with HTTP 422.
@@ -1893,13 +1894,13 @@ class TestApiSecurityAndInputValidation:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Week 4 Day 7 — Retrieval API Observability & Audit Metadata Tests
+# Observability & Audit Metadata Tests
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 class TestObservabilityMetadata:
     """
-    Week 4 Day 7 — Tests for per-request observability metadata.
+    Tests for per-request observability metadata.
 
     Covers:
       - metadata field presence in every successful response
@@ -2152,6 +2153,14 @@ class TestObservabilityMetadata:
         h2 = r2.headers.get("x-request-id") or r2.headers.get("X-Request-ID")
         assert h1 != h2, "X-Request-ID must differ across requests"
 
+    def test_request_id_header_matches_metadata_request_id(self) -> None:
+        """The X-Request-ID header and metadata.request_id in the JSON body must match exactly."""
+        response = client.post("/api/retrieval/query", json={})
+        assert response.status_code == 200
+        header_rid = response.headers.get("x-request-id") or response.headers.get("X-Request-ID")
+        body_rid = response.json()["metadata"]["request_id"]
+        assert header_rid == body_rid
+
     # ── metadata.timestamp ────────────────────────────────────────────────
 
     def test_metadata_timestamp_exists(self) -> None:
@@ -2319,10 +2328,10 @@ class TestObservabilityMetadata:
         # Observability metadata intact
         assert "metadata" in data
 
-    def test_day6_validation_still_works_with_day7_metadata(self) -> None:
+    def test_validation_still_works_with_observability_metadata(self) -> None:
         """
-        Day 6 input validation must still enforce 422 for all invalid inputs;
-        Day 7 observability must not interfere with these rejections.
+        Input validation must still enforce 422 for all invalid inputs;
+        observability must not interfere with these rejections.
         """
         invalid_payloads = [
             {"sources": ["unknown_source"]},
@@ -2340,7 +2349,7 @@ class TestObservabilityMetadata:
                 f"Expected 422 for payload {payload!r}, got {resp.status_code}"
             )
 
-    def test_day6_query_length_validation_still_works(self) -> None:
+    def test_query_length_validation_still_works(self) -> None:
         """A query exceeding 2000 chars must still be rejected with 422."""
         long_query = "a" * 2001
         response = client.post("/api/retrieval/query", json={"query": long_query})

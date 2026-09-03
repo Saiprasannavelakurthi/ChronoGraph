@@ -1,8 +1,7 @@
 """
 src/retrieval/__init__.py
 ─────────────────────────
-Week 3 & 4 — Temporal Retrieval Preparation & Service (Karkuvel's module).
-Week 4 Day 7 — Added RetrievalRequestMetadata export.
+Temporal Retrieval package for ChronoGraph.
 
 Public API:
 

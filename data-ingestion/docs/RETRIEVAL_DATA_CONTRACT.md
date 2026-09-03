@@ -1,12 +1,12 @@
-# Week 3 — Retrieval-Ready Data Contract
+# Temporal Retrieval-Ready Data Contract
 
-**Module Owner**: Karkuvel (data-ingestion branch)  
-**Contract Version**: Week 3.2 (adds output validation layer)  
+**Owner**: Data Ingestion & Temporal Retrieval Pipeline  
+**Contract Version**: 1.0.0  
 **Produced By**: `src/retrieval/builder.py` → `RetrievalRecordBuilder`  
 **Validated By**: `src/retrieval/validator.py` → `RetrievalOutputValidator`  
 **Output Files**:
-- `data/processed/retrieval_ready_records.json` — evidence records (unchanged contract)
-- `data/processed/retrieval_prep_summary.json` — pipeline execution metadata (added in Week 3.1)  
+- `data/processed/retrieval_ready_records.json` — evidence records
+- `data/processed/retrieval_prep_summary.json` — pipeline execution metadata  
 **CLI Command**: `python main.py --prepare-retrieval`
 
 ---
@@ -14,9 +14,9 @@
 ## Overview
 
 The retrieval-ready data contract defines the schema for evidence records
-prepared by the Week 3 Temporal Retrieval Preparation layer.
+prepared by the Temporal Retrieval Preparation layer.
 
-These records are derived from the Week 2 `graph_ready_triples.json` output
+These records are derived from `graph_ready_triples.json`
 and are designed to be consumed directly by the downstream **Temporal Routing
 / GraphRAG engine** for chronological retrieval, evidence ranking, and
 citation-backed answer generation.
@@ -186,19 +186,18 @@ ISO-8601 `timestamp` string.
 
 ---
 
-## Backward Compatibility
+## Pipeline Artifacts & Contracts
 
-This Week 3 contract extends, but does not replace or break, the Week 2
-graph-ready data contract (`docs/GRAPH_DATA_CONTRACT.md`).
+This contract extends the graph-ready data contract (`docs/GRAPH_DATA_CONTRACT.md`).
 
-| Artifact | Week | Status |
+| Artifact | Pipeline Stage | Description |
 |---|---|---|
-| `normalized_events.json` | Week 1 | Unchanged |
-| `extracted_triples.json` | Week 1 | Unchanged |
-| `graph_ready_triples.json` | Week 2 | Unchanged — the Week 3 builder reads this file |
-| `graph_prep_summary.json` | Week 2 | Unchanged |
-| `retrieval_ready_records.json` | **Week 3** | New output — evidence record array (contract unchanged in 3.1) |
-| `retrieval_prep_summary.json` | **Week 3.1** | New — pipeline execution metadata (separate file, does not touch records) |
+| `normalized_events.json` | Ingestion | Cleaned, normalized raw events |
+| `extracted_triples.json` | Triple Extraction | Extracted temporal knowledge triples |
+| `graph_ready_triples.json` | Graph Preparation | Validated, normalized, deduplicated graph triples |
+| `graph_prep_summary.json` | Graph Preparation | Graph preparation execution summary |
+| `retrieval_ready_records.json` | Retrieval Preparation | Citation-backed evidence records |
+| `retrieval_prep_summary.json` | Retrieval Preparation | Retrieval preparation execution metadata |
 
 ---
 
@@ -212,24 +211,24 @@ and monitoring. This file **never modifies** `retrieval_ready_records.json`.
 
 | Field | Type | Description |
 |---|---|---|
-| `pipeline_name` | `string` | Human-readable pipeline step name (e.g. `"Week 3 — Temporal Retrieval Preparation"`). |
-| `input_source` | `string` | Absolute path to the `graph_ready_triples.json` file consumed by this run. |
+| `pipeline_name` | `string` | Human-readable pipeline step name (`"Temporal Retrieval Preparation"`). |
+| `input_source` | `string` | Relative path to the `graph_ready_triples.json` file consumed by this run. |
 | `total_records` | `integer` | Number of graph-ready triples loaded from the input file. |
 | `records_built` | `integer` | Number of `RetrievalRecord` objects successfully built. |
 | `skipped_records` | `integer` | Number of triples skipped due to validation or build errors. |
-| `generated_at` | `string (ISO-8601)` | UTC timestamp of when this summary was written (e.g. `"2026-08-26T11:58:12.503901+00:00"`). |
+| `generated_at` | `string (ISO-8601)` | UTC timestamp of when this summary was written. |
 | `status` | `string` | `"success"` when `skipped_records == 0`; `"partial"` when any records were skipped. |
 
 ### Example `retrieval_prep_summary.json`
 
 ```json
 {
-  "pipeline_name": "Week 3 — Temporal Retrieval Preparation",
-  "input_source": "/data/processed/graph_ready_triples.json",
+  "pipeline_name": "Temporal Retrieval Preparation",
+  "input_source": "data/processed/graph_ready_triples.json",
   "total_records": 142,
   "records_built": 142,
   "skipped_records": 0,
-  "generated_at": "2026-08-26T11:58:12.503901+00:00",
+  "generated_at": "2026-09-02T16:58:43.235280+00:00",
   "status": "success"
 }
 ```
@@ -267,16 +266,13 @@ print(meta.to_dict())     # dict with all 7 fields
 # Generate retrieval_ready_records.json from existing graph_ready_triples.json
 cd data-ingestion
 python main.py --prepare-retrieval
-
-# Run the full Week 3 pipeline from scratch (ingest -> extract -> graph prep -> retrieval prep)
-python main.py --run-week3-data
 ```
 
 ---
 
 ## Example Input/Output Flow
 
-**Input** (`graph_ready_triples.json`, Week 2 output, sample record):
+**Input** (`graph_ready_triples.json`, sample record):
 
 ```json
 {
@@ -298,7 +294,7 @@ python main.py --run-week3-data
 }
 ```
 
-**Output** (`retrieval_ready_records.json`, Week 3 output):
+**Output** (`retrieval_ready_records.json`, sample record):
 
 ```json
 {
@@ -323,7 +319,7 @@ python main.py --run-week3-data
 }
 ```
 
-**Key additions in Week 3 output**:
+**Key additions in retrieval records**:
 - `event_date`: `"2023-03-15"` — extracted from `timestamp`, used for chronological indexing
 - `record_id`: set equal to `triple_id` for stable identification
 - `source_url`: `null` when not available in metadata (never fabricated)
@@ -381,7 +377,7 @@ and prints a validation summary section:
 
 ```
 ------------------------------------------------------------
-  Week 3: Retrieval Output Validation
+  Retrieval Output Validation
 ------------------------------------------------------------
   Validation: PASSED  (0 error(s), 0 warning(s))
   Unique record_ids: 142  Unique triple_ids: 142  Provenance violations: 0  Temporal errors: 0

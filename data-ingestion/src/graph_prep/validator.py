@@ -1,7 +1,7 @@
 """
 src/graph_prep/validator.py
 ────────────────────────────
-Week 2 – Graph-Ready Data Validation (Karkuvel's module).
+Graph-Ready Data Validation.
 
 Validates every extracted triple against the schema defined in
 src/schemas/graph.py.  Invalid records are NEVER silently discarded;

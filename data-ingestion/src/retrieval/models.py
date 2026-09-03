@@ -1,8 +1,7 @@
 """
 src/retrieval/models.py
-────────────────────────
-Week 3 — Pydantic models for Temporal Retrieval Preparation.
-Week 4 Day 7 — Added RetrievalRequestMetadata for observability.
+───────────────────────
+Pydantic models for the ChronoGraph Temporal Retrieval system.
 
 Classes
 ───────
@@ -64,7 +63,7 @@ class TemporalFilterMode(str, Enum):
 
 class PipelineExecutionMetadata(BaseModel):
     """
-    Execution metadata for the Week 3 Temporal Retrieval Preparation pipeline.
+    Execution metadata for the Temporal Retrieval Preparation pipeline.
 
     Written to a *separate* summary file (`retrieval_prep_summary.json`) so
     that the `retrieval_ready_records.json` data contract is not modified.
@@ -81,7 +80,7 @@ class PipelineExecutionMetadata(BaseModel):
     """
 
     pipeline_name: str = Field(
-        default="Week 3 — Temporal Retrieval Preparation",
+        default="Temporal Retrieval Preparation",
         description="Human-readable name of the pipeline.",
     )
     input_source: str = Field(
@@ -301,7 +300,7 @@ class RetrievalRecord(BaseModel):
     """
     A single retrieval-ready evidence record.
 
-    Derived from a graph-ready triple (Week 2 output) by the
+    Derived from a graph-ready triple by the
     RetrievalRecordBuilder.  Every required field is preserved from the
     original triple.  Optional fields are set to None when the upstream
     triple does not carry the information — no data is fabricated.
@@ -527,14 +526,14 @@ class RetrievalRequest(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Week 4 Day 7 — Observability Metadata
+# Observability Metadata
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 class RetrievalRequestMetadata(BaseModel):
     """
     Safe, per-request observability metadata attached to every successful
-    RetrievalQueryResponse (Week 4 Day 7).
+    RetrievalQueryResponse.
 
     Fields
     ──────
@@ -584,19 +583,19 @@ class RetrievalRequestMetadata(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Week 4 API Models
+# API Models
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 class RetrievalQueryRequest(BaseModel):
     """
-    Week 4 API Request model for temporal retrieval query endpoint.
+    API Request model for temporal retrieval query endpoint.
 
     Provides a clean, intuitive REST API interface that is normalized
-    into the existing Week 3 RetrievalRequest before filtering.
+    into the standard RetrievalRequest before filtering.
 
-    Input Validation Limits (Week 4 Day 6)
-    ───────────────────────────────────────
+    Input Validation Limits
+    ───────────────────────
     - query / query_text : max 2 000 characters
     - entity_hints        : max 50 items
     - entities           : max 50 items
@@ -717,7 +716,7 @@ class RetrievalQueryRequest(BaseModel):
 
     def to_retrieval_request(self) -> RetrievalRequest:
         """
-        Convert this API request into the standard Week 3 RetrievalRequest.
+        Convert this API request into the standard RetrievalRequest.
 
         Maintains complete compatibility with TemporalFilterEngine.
         """
@@ -751,12 +750,12 @@ class RetrievalQueryRequest(BaseModel):
 
 class RetrievalQueryResponse(BaseModel):
     """
-    Week 4 API Response model returning structured temporal retrieval results.
+    API response model returning structured temporal retrieval results.
 
-    Week 4 Day 7: Added optional ``metadata`` field (RetrievalRequestMetadata)
-    for observability.  Existing clients that do not consume ``metadata`` are
-    unaffected — the field is ``None`` by default and is omitted from responses
-    unless explicitly populated by the service layer.
+    The optional ``metadata`` field (RetrievalRequestMetadata) provides
+    per-request observability.  Existing clients that do not consume
+    ``metadata`` are unaffected — the field is ``None`` by default and is
+    omitted from responses unless explicitly populated by the service layer.
     """
 
     query: Optional[str] = Field(
@@ -809,7 +808,7 @@ class RetrievalQueryResponse(BaseModel):
     metadata: Optional["RetrievalRequestMetadata"] = Field(
         default=None,
         description=(
-            "Per-request observability metadata (Week 4 Day 7). "
+            "Per-request observability metadata. "
             "Includes request_id, execution_time_ms, cache_hit, and result counts. "
             "Null when not populated by the service layer."
         ),
@@ -837,10 +836,16 @@ class RetrievalQueryResponse(BaseModel):
 
 class RetrievalHealthResponse(BaseModel):
     """
-    Week 4 Health response schema for GET /api/health.
+    Health response schema for GET /api/health.
+
+    ``status`` is ``"ok"`` when retrieval data is available and readable.
+    ``status`` is ``"degraded"`` when retrieval data is missing or unreadable.
     """
 
-    status: str = Field(default="ok", description="Service health status ('ok').")
+    status: str = Field(
+        default="ok",
+        description="Service health status: 'ok' (data available) or 'degraded' (data unavailable).",
+    )
     service: str = Field(default="ChronoGraph Retrieval API", description="Service identifier.")
     version: str = Field(default="1.0.0", description="API version.")
     retrieval_data_available: bool = Field(

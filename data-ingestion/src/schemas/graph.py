@@ -1,10 +1,10 @@
 """
 src/schemas/graph.py
 ────────────────────
-Pydantic v2 models for ChronoGraph Week 1.
+Pydantic v2 models for ChronoGraph.
 
 All data that flows through the pipeline is typed via these models.
-The Triple model is the primary Week 2 contract – every field is required
+The Triple model is the primary graph contract – every field is required
 and documented so the Neo4j ingestion layer can consume it without guessing.
 """
 
@@ -153,8 +153,8 @@ class Entity(BaseModel):
     """
     Represents a single node in the temporal knowledge graph.
 
-    Entities are extracted from RawEvents by the LlamaIndex pipeline.
-    In Week 2 each Entity becomes a Neo4j node.
+    Entities are extracted from RawEvents by the extraction pipeline.
+    Each Entity represents a graph node.
     """
 
     name: str = Field(description="Canonical name of the entity.")
@@ -186,7 +186,7 @@ class Relationship(BaseModel):
     """
     A directed, labelled relationship between two entities.
 
-    In Week 2 this becomes a Neo4j relationship between two Node objects.
+    Represents a graph relationship between two Node objects.
     """
 
     relation_type: str = Field(
@@ -199,7 +199,7 @@ class Relationship(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Triple  (the primary Week 2 contract)
+# Triple  (the primary graph contract)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -207,8 +207,8 @@ class Triple(BaseModel):
     """
     An Entity → [RELATION] → Entity triple with temporal and provenance metadata.
 
-    This is the primary output of Week 1 and the primary input for Week 2
-    Neo4j ingestion.  Every field is documented so the Week 2 team can
+    This is the primary output of triple extraction and the primary input for
+    Neo4j ingestion.  Every field is documented so downstream consumers can
     consume the file without ambiguity.
 
     Example JSON::
@@ -272,7 +272,7 @@ class Triple(BaseModel):
     )
     metadata: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Extra fields for extensibility (Week 2+ use).",
+        description="Extra fields for extensibility.",
     )
 
     @field_validator("subject", "object", "relation", "evidence")
@@ -291,7 +291,7 @@ class Triple(BaseModel):
 
     def to_neo4j_dict(self) -> Dict[str, Any]:
         """
-        Serialize to a dict shaped for Week 2 Neo4j ingestion.
+        Serialize to a dict shaped for Neo4j ingestion.
 
         Returns a flat dict with explicit typing hints so Cypher
         ``CREATE`` / ``MERGE`` statements can consume it directly.

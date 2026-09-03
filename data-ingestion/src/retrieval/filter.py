@@ -1,7 +1,7 @@
 """
 src/retrieval/filter.py
-─────────────────────────
-Week 3 — Temporal filtering and chronological sorting for retrieval records.
+────────────────────────
+Temporal filtering and chronological sorting engine for retrieval records.
 
 The TemporalFilterEngine applies a RetrievalRequest's filter criteria to a
 list of RetrievalRecord objects entirely in Python, without touching Neo4j or

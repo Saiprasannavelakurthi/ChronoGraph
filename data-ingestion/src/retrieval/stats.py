@@ -1,7 +1,7 @@
-﻿"""
+"""
 src/retrieval/stats.py
 ───────────────────────
-Week 3 — Retrieval data quality and coverage statistics engine.
+Retrieval data quality and coverage statistics engine.
 
 RetrievalStatsEngine reads retrieval_ready_records.json and computes a
 RetrievalDataQualityStats summary covering:

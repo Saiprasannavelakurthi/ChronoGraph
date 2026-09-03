@@ -1,11 +1,11 @@
 """
 src/graph_prep/__init__.py
 ──────────────────────────
-Week 2 – Karkuvel's Data Integration & Graph-Ready Data Pipeline.
+Data Integration & Graph-Ready Data Pipeline.
 
 This module validates, normalizes (entities, relations, timestamps),
-and deduplicates extracted triples from Week 1, producing a clean
-graph_ready_triples.json for Saiprasanna's Neo4j ingestion module.
+and deduplicates extracted triples, producing a clean
+graph_ready_triples.json for downstream graph database ingestion.
 
 Public API
 ──────────

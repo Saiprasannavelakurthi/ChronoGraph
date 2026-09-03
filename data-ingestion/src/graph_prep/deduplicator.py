@@ -1,7 +1,7 @@
 """
 src/graph_prep/deduplicator.py
 ────────────────────────────────
-Week 2 – Deterministic Duplicate Triple Detection (Karkuvel's module).
+Deterministic Duplicate Triple Detection.
 
 A triple is considered a duplicate if it shares the same composite key:
 

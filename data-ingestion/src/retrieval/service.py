@@ -1,20 +1,21 @@
 """
 src/retrieval/service.py
 ────────────────────────
-Week 4 — Temporal Retrieval Service (Karkuvel's module).
+Temporal Retrieval Service for ChronoGraph.
 
-Orchestrates the loading, validation, filtering, and query execution for
-retrieval-ready evidence records with resilient error handling.
+Orchestrates loading, validation, filtering, and query execution over
+retrieval-ready evidence records with resilient error handling and
+per-request observability metadata.
 
 Architecture
 ────────────
-    RetrievalQueryRequest (Week 4 API schema)
+    RetrievalQueryRequest (API schema)
                ↓
-    RetrievalRequest (Week 3 model)
+    RetrievalRequest (internal filter model)
                ↓
     RetrievalService (loads & validates retrieval_ready_records.json)
                ↓
-    TemporalFilterEngine (Week 3 filtering & sorting engine)
+    TemporalFilterEngine (filtering & sorting engine)
                ↓
     RetrievalQueryResponse (structured results with provenance)
 """
@@ -109,35 +110,35 @@ class RetrievalService:
             return self._cached_records
 
         if not self.records_path.exists():
-            logger.error("Retrieval data file not found: %s", self.records_path)
+            logger.error("Retrieval data file not found")
             raise RetrievalDataNotFoundError(
-                f"Retrieval data file not found at '{self.records_path}'. "
-                "Run 'python main.py --prepare-retrieval' or POST /api/v1/prepare-graph first."
+                "Retrieval data file not found. "
+                "Run 'python main.py --prepare-retrieval' first."
             )
 
         try:
             with open(self.records_path, "r", encoding="utf-8") as fh:
                 raw_content = fh.read().strip()
                 if not raw_content:
-                    logger.warning("Retrieval data file %s is empty", self.records_path)
+                    logger.warning("Retrieval data file is empty")
                     self._cached_records = []
                     return []
                 raw_records = json.loads(raw_content)
         except json.JSONDecodeError as exc:
-            logger.error("Corrupted JSON in retrieval data file %s: %s", self.records_path, exc)
+            logger.error("Corrupted JSON in retrieval data file: %s", exc)
             raise RetrievalDataFormatError(
                 f"Invalid JSON in retrieval records file: {exc}"
             ) from exc
         except (RetrievalDataError, RetrievalServiceError):
             raise
         except Exception as exc:
-            logger.error("Failed to read retrieval records file %s: %s", self.records_path, exc)
-            raise RetrievalServiceError(f"Error reading retrieval records: {exc}") from exc
+            logger.error("Failed to read retrieval records file")
+            raise RetrievalServiceError("Error reading retrieval records") from exc
 
         if not isinstance(raw_records, list):
-            logger.error("Expected JSON list in %s, got %s", self.records_path, type(raw_records).__name__)
+            logger.error("Expected JSON list in retrieval data file, got %s", type(raw_records).__name__)
             raise RetrievalDataFormatError(
-                f"Expected a JSON list of records in {self.records_path}, got {type(raw_records).__name__}"
+                f"Expected a JSON list of records, got {type(raw_records).__name__}"
             )
 
         valid_records: List[RetrievalRecord] = []
@@ -156,10 +157,9 @@ class RetrievalService:
                 invalid_count += 1
 
         logger.info(
-            "RetrievalService: Loaded %d valid records (skipped %d invalid) from %s",
+            "records_loaded=%d records_skipped=%d",
             len(valid_records),
             invalid_count,
-            self.records_path,
         )
         self._cached_records = valid_records
         return valid_records
@@ -173,12 +173,16 @@ class RetrievalService:
     def query(
         self,
         request: Union[RetrievalQueryRequest, RetrievalRequest, Dict[str, Any]],
+        request_id: Optional[str] = None,
     ) -> RetrievalQueryResponse:
         """
         Execute a temporal retrieval query against loaded records.
 
         Steps:
-          1. Generate a server-side request_id (uuid4 — never from user input).
+          1. Accept or generate a request_id for this query.
+             When called from the HTTP endpoint, the middleware-generated ID is
+             passed in so that response.metadata.request_id == X-Request-ID header.
+             When called programmatically (tests, CLI), a new UUID is generated.
           2. Detect cache_hit before loading records.
           3. Safely load records (uses in-memory cache when available).
           4. Normalize request into RetrievalRequest.
@@ -191,12 +195,15 @@ class RetrievalService:
 
         Parameters:
             request: RetrievalQueryRequest, RetrievalRequest, or raw dictionary.
+            request_id: Optional caller-supplied request ID. If None, a new UUID
+                        is generated. The API endpoint passes the middleware ID here
+                        to ensure X-Request-ID == metadata.request_id.
 
         Returns:
             RetrievalQueryResponse: Complete structured response with observability metadata.
         """
-        # Step 1: Generate a server-side request ID — never derived from user input
-        request_id = str(uuid4())
+        # Step 1: Use caller-supplied ID or generate a server-side UUID
+        effective_request_id = request_id if request_id else str(uuid4())
 
         # Step 2: Detect cache hit BEFORE calling load_records
         cache_hit = self._cached_records is not None
@@ -225,7 +232,6 @@ class RetrievalService:
             page = 1
             page_size = request.limit
         elif isinstance(request, dict):
-            # Parse via RetrievalQueryRequest for unified API schema support
             parsed = RetrievalQueryRequest(**request)
             query_echo = parsed.query or parsed.query_text
             retrieval_req = parsed.to_retrieval_request()
@@ -235,7 +241,6 @@ class RetrievalService:
             raise ValueError(f"Unsupported request type: {type(request).__name__}")
 
         # Step 6: Apply filter engine with unlimited limit to determine total_matches
-        # TemporalFilterEngine is stateless and applies source -> entity -> relation -> temporal -> sort -> limit
         unlimited_limit = records_loaded + 1
         unlimited_req = retrieval_req.model_copy(update={"limit": unlimited_limit})
         _filter_start = time.perf_counter()
@@ -277,7 +282,7 @@ class RetrievalService:
 
         # Build observability metadata — safe fields only, never from user input
         obs_metadata = RetrievalRequestMetadata(
-            request_id=request_id,
+            request_id=effective_request_id,
             execution_time_ms=round(execution_time_ms, 3),
             returned_count=returned_count,
             total_count=total_matches,
@@ -288,10 +293,9 @@ class RetrievalService:
 
         # Structured, safe log — does NOT log query text, API keys, or env vars
         logger.info(
-            "retrieval_query request_id=%s endpoint=/api/retrieval/query method=POST "
-            "status=200 execution_ms=%.2f results=%d total_matches=%d "
-            "cache_hit=%s page=%d page_size=%d",
-            request_id,
+            "retrieval_query request_id=%s status=200 execution_ms=%.2f "
+            "results=%d total_matches=%d cache_hit=%s page=%d page_size=%d",
+            effective_request_id,
             execution_time_ms,
             returned_count,
             total_matches,
@@ -299,11 +303,10 @@ class RetrievalService:
             page,
             page_size,
         )
-        # Internal diagnostic log (filtering time only)
         logger.debug(
-            "RetrievalService.query detail: request_id=%s records_loaded=%d "
+            "retrieval_query_detail request_id=%s records_loaded=%d "
             "filtering_ms=%.2f total_pages=%d has_next=%s has_previous=%s",
-            request_id,
+            effective_request_id,
             records_loaded,
             _filter_ms,
             total_pages,
@@ -330,19 +333,29 @@ class RetrievalService:
     def get_health(self) -> RetrievalHealthResponse:
         """
         Check retrieval data availability and return health status.
+
+        Returns ``status="ok"`` only when retrieval data is present and readable.
+        Returns ``status="degraded"`` when data is missing or cannot be loaded.
         """
         available = self.records_path.exists()
         count: Optional[int] = None
+        status = "ok"
+
         if available:
             try:
                 records = self.load_records()
                 count = len(records)
-            except Exception as exc:
-                logger.warning("Could not read records for health check: %s", exc)
+                if count == 0:
+                    status = "degraded"
+            except Exception:
+                logger.warning("Could not load records for health check")
                 count = None
+                status = "degraded"
+        else:
+            status = "degraded"
 
         return RetrievalHealthResponse(
-            status="ok",
+            status=status,
             service="ChronoGraph Retrieval API",
             version="1.0.0",
             retrieval_data_available=available,
@@ -369,13 +382,14 @@ class RetrievalService:
                         stats_json = json.loads(raw_content)
                         if isinstance(stats_json, dict):
                             return stats_json
-            except Exception as exc:
-                logger.warning("Failed to read stats file %s: %s; recomputing", self.stats_path, exc)
+            except Exception:
+                logger.warning("Failed to read stats file; recomputing")
 
         # If stats file missing or unreadable, compute on-demand using records
         if not self.records_path.exists():
             raise RetrievalDataNotFoundError(
-                f"Cannot compute stats: retrieval records not found at '{self.records_path}'"
+                "Cannot compute stats: retrieval records not found. "
+                "Run 'python main.py --prepare-retrieval' first."
             )
 
         from src.retrieval.stats import RetrievalStatsEngine
@@ -388,11 +402,11 @@ class RetrievalService:
             stats = engine.compute()
             return stats.to_dict()
         except FileNotFoundError as exc:
-            raise RetrievalDataNotFoundError(str(exc)) from exc
+            raise RetrievalDataNotFoundError("Retrieval records not found") from exc
         except (ValueError, json.JSONDecodeError) as exc:
             raise RetrievalDataFormatError(f"Corrupted records during stats computation: {exc}") from exc
         except (RetrievalDataError, RetrievalServiceError):
             raise
         except Exception as exc:
-            logger.error("Failed to compute stats: %s", exc)
-            raise RetrievalServiceError(f"Error computing retrieval stats: {exc}") from exc
+            logger.error("Failed to compute retrieval stats")
+            raise RetrievalServiceError("Error computing retrieval stats") from exc

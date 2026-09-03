@@ -3,8 +3,8 @@ src/extraction/extractor.py
 ────────────────────────────
 LlamaIndex-based temporal triple extractor.
 
-This is the primary extraction component for Week 1.  It uses LlamaIndex to
-interact with the configured LLM (Ollama/Llama 3 or OpenAI) and extract
+This is the primary extraction component. It uses LlamaIndex to
+interact with the configured LLM (Groq, Ollama, or OpenAI) and extract
 structured Entity → [RELATION] → Entity triples from RawEvents.
 
 Architecture

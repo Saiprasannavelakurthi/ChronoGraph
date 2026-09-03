@@ -1,7 +1,7 @@
 """
 tests/test_retrieval.py
 ────────────────────────
-Week 3 — Comprehensive tests for Temporal Retrieval Preparation.
+Comprehensive tests for Temporal Retrieval Preparation.
 
 Coverage
 ────────
@@ -1095,15 +1095,14 @@ class TestPipelineExecutionMetadata:
         assert meta.input_source == "/data/processed/graph_ready_triples.json"
 
     def test_default_pipeline_name(self):
-        """Default pipeline_name contains expected Week 3 identifier."""
+        """Default pipeline_name contains expected identifier."""
         meta = PipelineExecutionMetadata(
             input_source="/some/path.json",
             total_records=10,
             records_built=10,
             skipped_records=0,
         )
-        assert "Week 3" in meta.pipeline_name
-        assert "Temporal Retrieval" in meta.pipeline_name
+        assert "Temporal Retrieval Preparation" in meta.pipeline_name
 
     # ── Status auto-derivation ───────────────────────────────────────────────
 
@@ -1358,7 +1357,7 @@ class TestPipelineExecutionMetadata:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 27. RetrievalOutputValidator — Week 3 final validation layer
+# 27. RetrievalOutputValidator — Consistency validation layer
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -1383,7 +1382,7 @@ def _valid_summary(
 ) -> dict:
     """Return a valid retrieval_prep_summary.json payload."""
     return {
-        "pipeline_name": "Week 3 \u2014 Temporal Retrieval Preparation",
+        "pipeline_name": "Temporal Retrieval Preparation",
         "input_source": "/data/processed/graph_ready_triples.json",
         "total_records": total,
         "records_built": built,
@@ -2499,7 +2498,7 @@ class TestRetrievalStatsEngine:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 29. Week 4 Day 3 Advanced Free-Text Query Support Tests
+# 29. Advanced Free-Text Query Support Tests
 # ─────────────────────────────────────────────────────────────────────────────
 
 

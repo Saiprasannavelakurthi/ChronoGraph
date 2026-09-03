@@ -1,7 +1,7 @@
-﻿"""
+"""
 src/retrieval/validator.py
 ──────────────────────────
-Week 3 — Output consistency validator for Temporal Retrieval Preparation.
+Output consistency validator for Temporal Retrieval Preparation.
 
 RetrievalOutputValidator verifies that the generated retrieval output is
 internally consistent after the builder has run. It reads the two output
@@ -92,7 +92,7 @@ class ValidationResult:
 
 class RetrievalOutputValidator:
     """
-    Post-build consistency validator for Week 3 retrieval output artefacts.
+    Post-build consistency validator for temporal retrieval output artefacts.
 
     Validates two files produced by RetrievalRecordBuilder:
       * retrieval_ready_records.json  — the evidence record array

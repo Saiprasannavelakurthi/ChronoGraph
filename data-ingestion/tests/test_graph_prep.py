@@ -1,7 +1,7 @@
 """
 tests/test_graph_prep.py
 ─────────────────────────
-Week 2 – Tests for Karkuvel's Data Integration & Graph-Ready Data Pipeline.
+Tests for Data Integration & Graph-Ready Data Pipeline.
 
 Coverage
 ────────
@@ -11,8 +11,6 @@ Coverage
     • TimestampNormalizer — UTC ISO-8601 parsing & output
     • TripleDeduplicator — duplicate detection, confidence preference, counts
     • GraphPrepPipeline  — integration test with real extracted_triples.json
-
-All Week 1 tests continue to pass (not removed or weakened).
 """
 
 from __future__ import annotations
@@ -588,10 +586,9 @@ class TestTripleDeduplicator:
 class TestGraphPrepPipeline:
     """
     Integration tests that run the pipeline against the actual
-    data/processed/extracted_triples.json produced by Week 1.
+    data/processed/extracted_triples.json.
 
-    These tests are skipped if the file does not exist (e.g., CI without
-    the Week 1 pipeline having run).
+    These tests are skipped if the file does not exist.
     """
 
     @pytest.fixture(autouse=True)

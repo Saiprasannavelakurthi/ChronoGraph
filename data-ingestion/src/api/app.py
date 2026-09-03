@@ -3,18 +3,18 @@ src/api/app.py
 ──────────────
 FastAPI application for ChronoGraph.
 
-Provides REST interfaces for data ingestion, triple extraction, graph-ready
-preparation, and Week 4 temporal retrieval query functionality.
+Provides REST interfaces for data ingestion, temporal triple extraction,
+graph preparation, and temporal retrieval queries.
 
 Endpoints
 ─────────
-Week 4 Primary Retrieval Endpoints:
+Temporal Retrieval API:
   GET  /api/health            → service & retrieval data availability probe
   POST /api/retrieval/query   → temporal evidence retrieval query
   GET  /api/retrieval/stats   → retrieval data quality statistics
 
 Pipeline Endpoints:
-  GET  /api/v1/health         → legacy liveness probe
+  GET  /api/v1/health         → liveness probe
   POST /api/v1/ingest         → run the data ingestion pipeline
   POST /api/v1/extract        → run the triple extraction pipeline
   GET  /api/v1/triples        → read extracted_triples.json
@@ -75,17 +75,22 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# ── CORS ─────────────────────────────────────────────────────────────────────
+# Origins are configurable via CORS_ORIGINS in .env.
+# Avoid allow_credentials=True when allow_origins=["*"] in production.
+_cors_origins = settings.cors_origins_list
+_allow_credentials = "*" not in _cors_origins
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# ── X-Request-ID Middleware (Week 4 Day 7) ─────────────────────────────────────────────────
+# ── X-Request-ID Middleware ───────────────────────────────────────────────────
 
 @app.middleware("http")
 async def attach_request_id_middleware(request: Request, call_next) -> Response:
@@ -93,8 +98,7 @@ async def attach_request_id_middleware(request: Request, call_next) -> Response:
     Generate a server-side UUID request ID for every HTTP request.
 
     - ID is always generated server-side (uuid4 — never derived from user input).
-    - The request ID is attached to ``request.state.request_id`` for use by
-      endpoint handlers and the service layer.
+    - Attached to ``request.state.request_id`` for use by endpoint handlers.
     - The same ID is returned in the ``X-Request-ID`` response header so API
       clients can correlate logs with specific requests.
     - No sensitive data is ever used as or included in the request ID.
@@ -186,7 +190,7 @@ class HealthResponse(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Endpoints
+# Pipeline Endpoints
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -242,8 +246,8 @@ async def ingest(request: IngestRequest = IngestRequest()) -> Dict[str, Any]:
             "output_file": str(settings.normalized_events_path),
         }
     except Exception as exc:
-        logger.error("Ingest endpoint error: %s", exc)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        logger.error("Ingest endpoint error")
+        raise HTTPException(status_code=500, detail="Data ingestion failed.") from exc
 
 
 @app.post(
@@ -269,13 +273,11 @@ async def extract(request: ExtractRequest = ExtractRequest()) -> Dict[str, Any]:
         )
 
     try:
-        # Load normalised events from disk
         from src.schemas.graph import RawEvent
         with open(normalized_path, "r", encoding="utf-8") as fh:
             raw_list = json.load(fh)
         events = [RawEvent(**item) for item in raw_list]
 
-        # Determine LLM provider
         provider = request.llm_provider or settings.llm_provider
 
         extractor = TemporalTripleExtractor(
@@ -292,7 +294,6 @@ async def extract(request: ExtractRequest = ExtractRequest()) -> Dict[str, Any]:
 
         results = extractor.extract_batch(events, max_events=request.max_events)
 
-        # Collect all triples and save
         all_triples: List[Triple] = []
         for result in results:
             all_triples.extend(result.triples)
@@ -321,8 +322,8 @@ async def extract(request: ExtractRequest = ExtractRequest()) -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("Extract endpoint error: %s", exc)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        logger.error("Extract endpoint error")
+        raise HTTPException(status_code=500, detail="Triple extraction failed.") from exc
 
 
 @app.get(
@@ -354,7 +355,6 @@ async def get_triples(
     with open(triples_path, "r", encoding="utf-8") as fh:
         triples: List[Dict[str, Any]] = json.load(fh)
 
-    # Filter
     if source:
         triples = [t for t in triples if t.get("source", "").lower() == source.lower()]
     if relation:
@@ -372,17 +372,14 @@ async def get_triples(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Week 2 endpoints – Graph-Ready Data (Karkuvel's module)
+# Graph Preparation Endpoints
 # ─────────────────────────────────────────────────────────────────────────────
-# These endpoints serve / trigger Karkuvel's graph preparation pipeline.
-# They do NOT connect to Neo4j; they expose the graph_ready_triples.json
-# file that Saiprasanna's Neo4j module will consume.
 
 
 @app.get(
     "/api/v1/graph-ready",
-    tags=["Week 2 – Graph Data"],
-    summary="Read graph-ready triples (Week 2 output)",
+    tags=["Graph Data"],
+    summary="Read graph-ready triples",
 )
 async def get_graph_ready(
     limit: int = 50,
@@ -393,7 +390,7 @@ async def get_graph_ready(
     """
     Return records from graph_ready_triples.json with optional filters.
 
-    This file is produced by Karkuvel's Week 2 graph preparation pipeline
+    Produced by the graph preparation pipeline
     (run POST /api/v1/prepare-graph or 'python main.py --prepare-graph').
 
     Query params
@@ -416,7 +413,6 @@ async def get_graph_ready(
     with open(graph_ready_path, "r", encoding="utf-8") as fh:
         triples: List[Dict[str, Any]] = json.load(fh)
 
-    # Apply optional filters
     if source:
         triples = [t for t in triples if t.get("source", "").lower() == source.lower()]
     if relation:
@@ -434,21 +430,20 @@ async def get_graph_ready(
     return {
         "total_matching": total,
         "returned": len(triples),
-        "source_file": str(graph_ready_path),
         "triples": triples,
     }
 
 
 @app.post(
     "/api/v1/prepare-graph",
-    tags=["Week 2 – Graph Data"],
-    summary="Run the Week 2 graph preparation pipeline",
+    tags=["Graph Data"],
+    summary="Run the graph preparation pipeline",
 )
 async def prepare_graph() -> Dict[str, Any]:
     """
-    Execute Karkuvel's graph preparation pipeline:
+    Execute the graph preparation pipeline:
 
-    1. Load extracted_triples.json (Week 1 output).
+    1. Load extracted_triples.json.
     2. Validate all triples against the graph schema.
     3. Normalise entity names, relation labels, and timestamps.
     4. Deduplicate using deterministic composite-key logic.
@@ -485,8 +480,6 @@ async def prepare_graph() -> Dict[str, Any]:
             "invalid_triples": stats["invalid_triples"],
             "duplicates_removed": stats["duplicates_removed"],
             "graph_ready_triples": stats["graph_ready_triples"],
-            "output_file": str(settings.graph_ready_triples_path),
-            "summary_file": str(settings.graph_prep_summary_path),
             "date_range": summary["date_range"],
             "entities": summary["entities"],
             "sources": summary["sources"],
@@ -494,12 +487,12 @@ async def prepare_graph() -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("prepare-graph endpoint error: %s", exc)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        logger.error("Graph preparation pipeline error")
+        raise HTTPException(status_code=500, detail="Graph preparation failed.") from exc
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Week 4 Primary Endpoints — Temporal Retrieval Query API
+# Temporal Retrieval API Endpoints
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -513,13 +506,16 @@ async def api_health() -> RetrievalHealthResponse:
     """
     Return API service health status, retrieval data availability on disk,
     and total loaded record count.
+
+    Returns ``status="ok"`` when retrieval data is available and readable.
+    Returns ``status="degraded"`` when retrieval data is missing or unreadable.
     """
     try:
         return retrieval_service.get_health()
-    except Exception as exc:
-        logger.error("Error during health check: %s", exc)
+    except Exception:
+        logger.error("Error during health check")
         return RetrievalHealthResponse(
-            status="ok",
+            status="degraded",
             service="ChronoGraph Retrieval API",
             version="1.0.0",
             retrieval_data_available=False,
@@ -546,12 +542,13 @@ async def query_retrieval(request: Request, body: RetrievalQueryRequest) -> Retr
       - Chronological sorting (ASC / DESC)
       - Result limit and total match count prior to limit
       - Complete evidence provenance preservation
-      - Observability metadata (request_id, execution_time_ms, cache_hit) in response (Week 4 Day 7)
+      - Per-request observability metadata (request_id, execution_time_ms, cache_hit)
     """
     _endpoint_start = time.perf_counter()
     request_id = getattr(request.state, "request_id", str(uuid4()))
     try:
-        resp = retrieval_service.query(body)
+        # Pass middleware request_id into the service so metadata.request_id == X-Request-ID
+        resp = retrieval_service.query(body, request_id=request_id)
         _endpoint_ms = (time.perf_counter() - _endpoint_start) * 1000
         logger.info(
             "retrieval_query_endpoint request_id=%s method=POST endpoint=/api/retrieval/query "
@@ -562,7 +559,7 @@ async def query_retrieval(request: Request, body: RetrievalQueryRequest) -> Retr
             resp.metadata.cache_hit if resp.metadata else "unknown",
         )
         return resp
-    except RetrievalDataNotFoundError as exc:
+    except RetrievalDataNotFoundError:
         logger.warning(
             "retrieval_query_endpoint request_id=%s status=404 reason=data_not_found",
             request_id,
@@ -574,7 +571,7 @@ async def query_retrieval(request: Request, body: RetrievalQueryRequest) -> Retr
                 "request_id": request_id,
             },
         )
-    except (RetrievalDataFormatError, RetrievalDataCorruptedError) as exc:
+    except (RetrievalDataFormatError, RetrievalDataCorruptedError):
         logger.error(
             "retrieval_query_endpoint request_id=%s status=500 reason=corrupted_data",
             request_id,
@@ -586,7 +583,7 @@ async def query_retrieval(request: Request, body: RetrievalQueryRequest) -> Retr
                 "request_id": request_id,
             },
         )
-    except RetrievalServiceError as exc:
+    except RetrievalServiceError:
         logger.error(
             "retrieval_query_endpoint request_id=%s status=500 reason=service_error",
             request_id,
@@ -600,7 +597,7 @@ async def query_retrieval(request: Request, body: RetrievalQueryRequest) -> Retr
         )
     except HTTPException:
         raise
-    except Exception as exc:
+    except Exception:
         logger.error(
             "retrieval_query_endpoint request_id=%s status=500 reason=unexpected_error",
             request_id,
@@ -621,37 +618,35 @@ async def query_retrieval(request: Request, body: RetrievalQueryRequest) -> Retr
 )
 async def get_retrieval_stats() -> Dict[str, Any]:
     """
-    Expose Week 3 retrieval data quality and coverage statistics.
+    Expose retrieval data quality and coverage statistics.
 
     Reads retrieval_quality_stats.json or computes statistics on-demand.
     """
     try:
         return retrieval_service.get_stats()
-    except RetrievalDataNotFoundError as exc:
-        logger.warning("Retrieval stats unavailable: %s", exc)
+    except RetrievalDataNotFoundError:
+        logger.warning("Retrieval stats unavailable: data not found")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Retrieval data file not found. Run 'python main.py --prepare-retrieval' first.",
-        ) from exc
-    except (RetrievalDataFormatError, RetrievalDataCorruptedError) as exc:
-        logger.error("Corrupted retrieval data encountered during stats retrieval: %s", exc)
+        )
+    except (RetrievalDataFormatError, RetrievalDataCorruptedError):
+        logger.error("Corrupted retrieval data during stats retrieval")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Retrieval data file is corrupted or cannot be parsed.",
-        ) from exc
-    except RetrievalServiceError as exc:
-        logger.error("Retrieval service error during stats retrieval: %s", exc)
+        )
+    except RetrievalServiceError:
+        logger.error("Retrieval service error during stats retrieval")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal retrieval service error occurred while retrieving data statistics.",
-        ) from exc
+        )
     except HTTPException:
         raise
-    except Exception as exc:
-        logger.error("Unexpected error in /api/retrieval/stats: %s", exc)
+    except Exception:
+        logger.error("Unexpected error in /api/retrieval/stats")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error occurred while retrieving data statistics.",
-        ) from exc
-
-
+        )

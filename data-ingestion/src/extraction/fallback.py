@@ -3,8 +3,8 @@ src/extraction/fallback.py
 ──────────────────────────
 Heuristic / rule-based fallback extractor.
 
-This module allows ChronoGraph to run the full Week 1 pipeline WITHOUT:
-  - An OpenAI API key
+This module allows ChronoGraph to run the pipeline WITHOUT:
+  - An OpenAI or Groq API key
   - A running Ollama server
   - Any network access
 
@@ -16,7 +16,7 @@ The fallback uses a deterministic pattern-matching approach:
   3. Technology / project keyword dictionary for object entities.
 
 Results are clearly labelled with ``extraction_mode = ExtractionMode.FALLBACK``
-so that downstream consumers (Week 2 Neo4j loader) can distinguish heuristic
+so that downstream consumers (Neo4j loader) can distinguish heuristic
 triples from LLM-generated ones.
 
 Limitations
@@ -24,7 +24,6 @@ Limitations
 - Does not understand context or negation.
 - May miss complex multi-hop relationships.
 - Confidence scores are heuristic (not probabilistic).
-- This is intentionally simple; Week 2+ will require the LLM pipeline.
 """
 
 from __future__ import annotations

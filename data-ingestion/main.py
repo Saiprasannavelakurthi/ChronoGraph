@@ -1,37 +1,24 @@
 """
 main.py
 ───────
-ChronoGraph CLI entrypoint — Week 1 + Week 2 + Week 3.
+ChronoGraph CLI entrypoint.
 
-Week 1 commands
-───────────────
+Commands
+────────
   python main.py --ingest              Run data ingestion -> normalized_events.json
   python main.py --extract             Run triple extraction -> extracted_triples.json
-  python main.py --run-all             Run full Week 1 pipeline (ingest + extract)
-  python main.py --export-json         Print extracted_triples.json to stdout
-  python main.py --start-api           Start the FastAPI server
+  python main.py --run-all             Run full ingestion + extraction pipeline
+  python main.py --prepare-graph       Validate + normalize + deduplicate -> graph_ready_triples.json
+  python main.py --prepare-retrieval   Build retrieval-ready records -> retrieval_ready_records.json
+  python main.py --retrieval-stats     Compute data quality statistics -> retrieval_quality_stats.json
+  python main.py --start-api           Start the FastAPI REST server
   python main.py --validate-dag        Validate the Airflow DAG (import check)
-
-Week 2 commands (Karkuvel - Data Integration & Graph-Ready Pipeline)
-─────────────────────────────────────────────────────────────────────
-  python main.py --prepare-graph       Validate + normalize + deduplicate ->
-                                       graph_ready_triples.json
-  python main.py --graph-prep          Alias for --prepare-graph
-  python main.py --run-week2-data      Full pipeline: ingest -> extract ->
-                                       graph preparation
-
-Week 3 commands (Karkuvel - Temporal Retrieval Preparation)
-────────────────────────────────────────────────────────────
-  python main.py --prepare-retrieval   Build retrieval-ready records from
-                                       graph_ready_triples.json ->
-                                       retrieval_ready_records.json
-  python main.py --run-week3-data      Full pipeline: ingest -> extract ->
-                                       graph prep -> retrieval prep
+  python main.py --export-json         Print extracted_triples.json to stdout
 
 Environment
 ───────────
-Copy .env.example -> .env and set LLM_PROVIDER (default: mock).
-With LLM_PROVIDER=mock no external services are required.
+Copy .env.example -> .env and set LLM_PROVIDER (default: groq).
+With LLM_PROVIDER=mock or fallback, no external services are required.
 """
 
 from __future__ import annotations
@@ -75,8 +62,8 @@ def _print_banner() -> None:
     banner = (
         "\n"
         "  ChronoGraph\n"
-        "  Temporal GraphRAG for Enterprise Forensics - Week 1 + Week 2\n"
-        "  =============================================================\n"
+        "  Temporal GraphRAG for Enterprise Forensics\n"
+        "  ==========================================\n"
     )
     if _RICH:
         console.print(f"[bold cyan]{banner}[/bold cyan]")
@@ -233,7 +220,7 @@ def validate_dag() -> None:
         spec = importlib.util.spec_from_file_location("chronograph_dag", dag_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        _print_info("DAG module imported successfully: chronograph_week1_ingestion")
+        _print_info("DAG module imported successfully")
         dag_obj = getattr(module, "dag", None)
         dag_id = getattr(dag_obj, "dag_id", None)
         if dag_id:
@@ -253,7 +240,7 @@ def validate_dag() -> None:
 
 def start_api() -> None:
     """Start the FastAPI server."""
-    _print_section("Starting FastAPI Server (Week 4 Temporal Retrieval API)")
+    _print_section("Starting FastAPI Server (Temporal Retrieval API)")
     try:
         import uvicorn
         _print_info(f"Server:     http://{settings.api_host}:{settings.api_port}")
@@ -274,19 +261,19 @@ def start_api() -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Week 2 – Graph Preparation (Karkuvel)
+# Graph Preparation
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_graph_prep() -> dict:
     """
-    Week 2 – Graph-Ready Data Pipeline (Karkuvel's module).
+    Graph-Ready Data Pipeline.
 
     Reads: data/processed/extracted_triples.json
     Writes:
         data/processed/graph_ready_triples.json
         data/processed/graph_prep_summary.json
     """
-    _print_section("Week 2: Graph-Ready Data Preparation (Karkuvel)")
+    _print_section("Graph-Ready Data Preparation")
 
     if not settings.extracted_triples_path.exists():
         _print_error(
@@ -370,23 +357,23 @@ def run_graph_prep() -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Week 3 – Retrieval Preparation (Karkuvel)
+# Retrieval Preparation
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_retrieval_prep() -> dict:
     """
-    Week 3 – Temporal Retrieval Preparation (Karkuvel's module).
+    Temporal Retrieval Preparation.
 
     Reads: data/processed/graph_ready_triples.json
     Writes:
         data/processed/retrieval_ready_records.json
         data/processed/retrieval_prep_summary.json
     """
-    _print_section("Week 3: Temporal Retrieval Preparation (Karkuvel)")
+    _print_section("Temporal Retrieval Preparation")
 
     if not settings.graph_ready_triples_path.exists():
         _print_error(
-            "graph_ready_triples.json not found. Run --prepare-graph or --run-week2-data first."
+            "graph_ready_triples.json not found. Run --prepare-graph first."
         )
         sys.exit(1)
 
@@ -470,10 +457,10 @@ def run_retrieval_prep() -> dict:
     _print_info(f"retrieval_ready_records.json -> {settings.retrieval_ready_records_path}")
     _print_info(f"retrieval_prep_summary.json  -> {settings.retrieval_prep_summary_path}")
 
-    # ── Week 3 Output Validation ──────────────────────────────────────────────
+    # ── Output Validation ─────────────────────────────────────────────────────
     from src.retrieval.validator import RetrievalOutputValidator
 
-    _print_section("Week 3: Retrieval Output Validation")
+    _print_section("Retrieval Output Validation")
     validator = RetrievalOutputValidator(
         records_path=settings.retrieval_ready_records_path,
         summary_path=settings.retrieval_prep_summary_path,
@@ -535,13 +522,13 @@ def run_retrieval_prep() -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Week 3 – Retrieval Data Quality Statistics (Karkuvel)
+# Retrieval Data Quality Statistics
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 def run_retrieval_stats() -> "RetrievalDataQualityStats":
     """
-    Week 3 – Compute and display retrieval data quality statistics.
+    Compute and display retrieval data quality statistics.
 
     Reads: data/processed/retrieval_ready_records.json
     Writes: data/processed/retrieval_quality_stats.json
@@ -549,12 +536,12 @@ def run_retrieval_stats() -> "RetrievalDataQualityStats":
     from src.retrieval.stats import RetrievalStatsEngine
     from src.retrieval.models import RetrievalDataQualityStats  # noqa: F401 (for type hint)
 
-    _print_section("Week 3: Retrieval Data Quality Statistics (Karkuvel)")
+    _print_section("Retrieval Data Quality Statistics")
 
     if not settings.retrieval_ready_records_path.exists():
         _print_error(
             "retrieval_ready_records.json not found. "
-            "Run --prepare-retrieval or --run-week3-data first."
+            "Run --prepare-retrieval first."
         )
         sys.exit(1)
 
@@ -639,82 +626,73 @@ def run_retrieval_stats() -> "RetrievalDataQualityStats":
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="chronograph",
-        description="ChronoGraph CLI – Week 1 + Week 2 + Week 3 (Temporal Retrieval Preparation)",
+        description="ChronoGraph CLI - Temporal GraphRAG for Enterprise Forensics",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Week 1 examples:
-  python main.py --run-all                      Full Week 1 pipeline (ingest + extract)
+Examples:
+  python main.py --run-all                      Full pipeline (ingest + extract)
   python main.py --ingest                       Only load & normalise data
   python main.py --extract                      Only extract triples
+  python main.py --prepare-graph                Validate, normalize & deduplicate triples
+  python main.py --prepare-retrieval            Build retrieval-ready records
+  python main.py --retrieval-stats              Compute data quality statistics
   python main.py --export-json                  Print extracted_triples.json to stdout
   python main.py --validate-dag                 Check Airflow DAG syntax
-  python main.py --start-api                    Start FastAPI server on :8000
-
-Week 2 examples (Karkuvel – Graph-Ready Data Pipeline):
-  python main.py --prepare-graph                Validate + normalize + deduplicate triples
-  python main.py --graph-prep                   Alias for --prepare-graph
-  python main.py --run-week2-data               Full pipeline: ingest -> extract -> graph prep
-
-Week 3 examples (Karkuvel – Temporal Retrieval Preparation):
-  python main.py --prepare-retrieval            Build retrieval-ready records from graph_ready_triples.json
-  python main.py --retrieval-stats              Compute data quality statistics from retrieval_ready_records.json
-  python main.py --run-week3-data               Full pipeline: ingest -> extract -> graph prep -> retrieval prep
+  python main.py --start-api                    Start FastAPI REST server on :8000
 
 LLM modes (set in .env or environment):
   LLM_PROVIDER=groq     -> Groq Cloud API (llama-3.1-8b-instant, default)
   LLM_PROVIDER=ollama   -> Ollama + Llama3 local inference
   LLM_PROVIDER=openai   -> OpenAI API (requires OPENAI_API_KEY)
   LLM_PROVIDER=mock     -> Heuristic fallback (no external services required)
+  LLM_PROVIDER=fallback -> Synonym for mock
         """,
     )
 
     group = parser.add_mutually_exclusive_group(required=True)
-    # ── Week 1 commands ──────────────────────────────────────────────────────
     group.add_argument("--ingest", action="store_true", help="Run ingestion pipeline only")
     group.add_argument("--extract", action="store_true", help="Run extraction pipeline only")
     group.add_argument("--run-all", action="store_true", help="Run full ingestion + extraction pipeline")
     group.add_argument("--export-json", action="store_true", help="Print extracted_triples.json to stdout")
     group.add_argument("--start-api", action="store_true", help="Start FastAPI REST server")
-    group.add_argument("--serve-api", action="store_true", help="Alias for --start-api (Start FastAPI REST server)")
+    group.add_argument("--serve-api", action="store_true", help=argparse.SUPPRESS)
     group.add_argument("--validate-dag", action="store_true", help="Validate Airflow DAG import")
-    # ── Week 2 commands (Karkuvel) ────────────────────────────────────────────
     group.add_argument(
         "--prepare-graph",
         action="store_true",
-        help="Week 2: Validate, normalize & deduplicate triples -> graph_ready_triples.json",
+        help="Validate, normalize & deduplicate triples -> graph_ready_triples.json",
     )
     group.add_argument(
         "--graph-prep",
         action="store_true",
         help="Alias for --prepare-graph",
     )
+    # Backward-compatible aliases kept as hidden options
     group.add_argument(
         "--run-week2-data",
         action="store_true",
-        help="Week 2: Full pipeline — ingest -> extract -> graph preparation",
+        help=argparse.SUPPRESS,
     )
-    # ── Week 3 commands (Karkuvel) ────────────────────────────────────────────
     group.add_argument(
         "--prepare-retrieval",
         action="store_true",
-        help="Week 3: Build retrieval-ready records from graph_ready_triples.json",
+        help="Build retrieval-ready records from graph_ready_triples.json",
     )
     group.add_argument(
         "--run-week3-data",
         action="store_true",
-        help="Week 3: Full pipeline — ingest -> extract -> graph prep -> retrieval prep",
+        help=argparse.SUPPRESS,
     )
     group.add_argument(
         "--retrieval-stats",
         action="store_true",
-        help="Week 3: Compute data quality statistics from retrieval_ready_records.json",
+        help="Compute data quality statistics from retrieval_ready_records.json",
     )
 
     args = parser.parse_args()
 
     _print_banner()
 
-    # ── Week 1 dispatching ───────────────────────────────────────────────────
     if args.ingest:
         run_ingest()
 
@@ -724,10 +702,10 @@ LLM modes (set in .env or environment):
     elif args.run_all:
         events = run_ingest()
         run_extract(events)
-        _print_section("Week 1 Pipeline Complete")
+        _print_section("Pipeline Complete")
         _print_info(f"normalized_events.json -> {settings.normalized_events_path}")
         _print_info(f"extracted_triples.json -> {settings.extracted_triples_path}")
-        _print_info("Run '--prepare-graph' to execute Week 2 graph preparation.")
+        _print_info("Run '--prepare-graph' to execute graph preparation.")
 
     elif args.export_json:
         export_json()
@@ -738,32 +716,30 @@ LLM modes (set in .env or environment):
     elif args.validate_dag:
         validate_dag()
 
-    # ── Week 2 dispatching (Karkuvel) ────────────────────────────────────────
     elif args.prepare_graph or args.graph_prep:
         run_graph_prep()
-        _print_section("Week 2 Graph Preparation Complete")
+        _print_section("Graph Preparation Complete")
 
     elif args.run_week2_data:
         events = run_ingest()
         run_extract(events)
         run_graph_prep()
-        _print_section("Week 2 Full Pipeline Complete")
+        _print_section("Full Pipeline Complete")
         _print_info(f"normalized_events.json   -> {settings.normalized_events_path}")
         _print_info(f"extracted_triples.json   -> {settings.extracted_triples_path}")
         _print_info(f"graph_ready_triples.json -> {settings.graph_ready_triples_path}")
         _print_info(f"graph_prep_summary.json  -> {settings.graph_prep_summary_path}")
 
-    # ── Week 3 dispatching (Karkuvel) ────────────────────────────────────────
     elif args.prepare_retrieval:
         run_retrieval_prep()
-        _print_section("Week 3 Retrieval Preparation Complete")
+        _print_section("Retrieval Preparation Complete")
 
     elif args.run_week3_data:
         events = run_ingest()
         run_extract(events)
         run_graph_prep()
         run_retrieval_prep()
-        _print_section("Week 3 Full Pipeline Complete")
+        _print_section("Full Pipeline Complete")
         _print_info(f"normalized_events.json         -> {settings.normalized_events_path}")
         _print_info(f"extracted_triples.json         -> {settings.extracted_triples_path}")
         _print_info(f"graph_ready_triples.json       -> {settings.graph_ready_triples_path}")
@@ -773,7 +749,7 @@ LLM modes (set in .env or environment):
 
     elif args.retrieval_stats:
         run_retrieval_stats()
-        _print_section("Week 3 Retrieval Statistics Complete")
+        _print_section("Retrieval Statistics Complete")
 
 
 if __name__ == "__main__":

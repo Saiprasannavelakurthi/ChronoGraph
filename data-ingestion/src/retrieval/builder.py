@@ -1,10 +1,10 @@
 """
 src/retrieval/builder.py
-─────────────────────────
-Week 3 — Builds RetrievalRecord list from graph-ready triples.
+────────────────────────
+Builds RetrievalRecord list from graph-ready triples.
 
 The RetrievalRecordBuilder reads the existing graph_ready_triples.json
-produced by Week 2's GraphPrepPipeline and transforms each record into a
+produced by the GraphPrepPipeline and transforms each record into a
 RetrievalRecord — the retrieval-ready evidence unit for downstream Temporal
 Routing.
 
@@ -45,7 +45,7 @@ class RetrievalRecordBuilder:
 
     Parameters
     ──────────
-    input_path : Path to graph_ready_triples.json (Week 2 output).
+    input_path : Path to graph_ready_triples.json.
     output_path: Destination for retrieval_ready_records.json.
 
     Usage
@@ -257,8 +257,15 @@ class RetrievalRecordBuilder:
     ) -> "PipelineExecutionMetadata":
         """Build and persist PipelineExecutionMetadata to retrieval_prep_summary.json."""
         import json
+        from config.settings import PROJECT_ROOT
+
+        try:
+            input_source = str(self.input_path.resolve().relative_to(PROJECT_ROOT.resolve())).replace("\\", "/")
+        except Exception:
+            input_source = str(self.input_path).replace("\\", "/")
+
         metadata = PipelineExecutionMetadata(
-            input_source=str(self.input_path.resolve()),
+            input_source=input_source,
             total_records=total_records,
             records_built=records_built,
             skipped_records=skipped_records,

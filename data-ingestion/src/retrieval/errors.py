@@ -1,7 +1,7 @@
 """
 src/retrieval/errors.py
 ───────────────────────
-Week 4 — Custom Exception Hierarchy for the ChronoGraph Retrieval Module.
+Custom exception hierarchy for the ChronoGraph Retrieval module.
 
 Defines clear, domain-specific exceptions for retrieval data handling,
 file validation, and service execution.
