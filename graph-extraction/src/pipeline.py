@@ -108,27 +108,47 @@ def process_text(
 
     source_val = source or (metadata.get("source") if isinstance(metadata, dict) else None)
     
-    result_model = extractor.extract(cleaned_input, source=source_val)
-    # Collect any dangling edges that were pruned during extraction.
-    pruned = list(getattr(extractor, "_last_pruned", []))
-
-    # Validate extraction result
-    validation = validate_extraction(result_model)
+    from src.errors import GraphExtractionError
     
-    # Combine pruned-edge errors with structural validation errors
-    all_errors = list(validation.errors) + [
-        f"Validation error: {p}" for p in pruned
-    ]
-    combined_is_valid = validation.is_valid and not pruned
+    try:
+        result_model = extractor.extract(cleaned_input, source=source_val)
+        pruned = list(getattr(extractor, "_last_pruned", []))
+        validation = validate_extraction(result_model)
+        
+        all_errors = list(validation.errors) + [
+            f"Validation error: {p}" for p in pruned
+        ]
+        combined_is_valid = validation.is_valid and not pruned
+        combined_warnings = validation.warnings
+    except GraphExtractionError as e:
+        logger.error(f"Extraction failed: {e}")
+        all_errors = [f"Extraction failed: {str(e)}"]
+        if hasattr(e, "errors") and getattr(e, "errors"):
+            all_errors.extend(getattr(e, "errors"))
+        
+        if raise_on_validation_error:
+            raise ExtractionValidationError(
+                f"Graph extraction failed with error: {e}",
+                errors=all_errors,
+                original_error=e
+            )
+        
+        result_model = GraphExtractionResult(entities=[], relationships=[], triples=[])
+        combined_is_valid = False
+        combined_warnings = []
 
     from src.validator import ValidationResult
     combined_validation = ValidationResult(
         is_valid=combined_is_valid,
         errors=all_errors,
-        warnings=validation.warnings
+        warnings=combined_warnings
     )
 
-    if not combined_is_valid:
+    if not combined_is_valid and not all_errors:
+        # Fallback if no errors populated
+        all_errors = ["Unknown validation failure."]
+        
+    if not combined_is_valid and result_model.entities:
         logger.error(
             f"Extraction validation failed with {len(all_errors)} error(s): {all_errors}"
         )
@@ -213,10 +233,15 @@ def process_records(
         if not cleaned_input:
             continue
 
-        result_model = extractor.extract(cleaned_input, source=source)
-        raw_entities.extend(result_model.entities)
-        raw_relationships.extend(result_model.relationships)
-        raw_triples.extend(result_model.triples)
+        try:
+            result_model = extractor.extract(cleaned_input, source=source)
+            raw_entities.extend(result_model.entities)
+            raw_relationships.extend(result_model.relationships)
+            raw_triples.extend(result_model.triples)
+        except Exception as e:
+            logger.error(f"Error extracting record at index {idx}: {e}")
+            if raise_on_validation_error:
+                raise
 
     # Consolidated post-processing & cross-record deduplication
     consolidated_model = GraphExtractionResult(

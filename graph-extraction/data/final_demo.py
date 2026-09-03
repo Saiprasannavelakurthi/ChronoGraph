@@ -1,7 +1,7 @@
 """
-Week 4 Demonstration Script — ChronoGraph Graph Extraction Module.
+Final Demonstration Script — ChronoGraph Graph Extraction Module.
 
-Showcases Week 4 final validation enhancements:
+Showcases final validation enhancements:
   - Duplicate entity and relationship detection (warnings)
   - Dangling reference detection (errors)
   - Relationship / triple consistency validation
@@ -262,7 +262,7 @@ print(f"\nNeo4j-Ready Batch Output:")
 print(json.dumps(batch_result, indent=2))
 
 print("\n" + "-" * 72)
-print("  WEEK 4 DEMONSTRATION SUMMARY")
+print("  FINAL DEMONSTRATION SUMMARY")
 print("-" * 72)
 print_ok(f"Status: is_valid = {batch_result['is_valid']}")
 print_ok(f"Unique Entities: {len(batch_result['entities'])}")
