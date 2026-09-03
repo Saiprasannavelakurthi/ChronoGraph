@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![LlamaIndex](https://img.shields.io/badge/LlamaIndex-0.10%2B-purple.svg)](https://www.llamaindex.ai/)
 [![Groq LLM](https://img.shields.io/badge/Groq-llama--3.1--8b--instant-orange.svg)](https://groq.com/)
-[![Tests](https://img.shields.io/badge/tests-558%20passed-brightgreen.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/tests-615%20passed-brightgreen.svg)](https://docs.pytest.org/)
 
 **ChronoGraph** is a Temporal GraphRAG pipeline engineered for enterprise forensics, knowledge graph extraction, and cross-platform communication analytics. It ingests unstructured developer communications (Slack messages, GitHub PRs/issues, Jira tickets), extracts temporal entity-relationship triples using LlamaIndex & Groq LLMs (with robust heuristic fallbacks), validates and normalizes entities/relations, deduplicates records, prepares citation-ready chronological retrieval evidence records, and exposes a high-performance REST Retrieval Query API for downstream Temporal Routing and GraphRAG answer generation.
 
@@ -146,46 +146,6 @@ data-ingestion/
     ├── test_ingestion.py             # Loader & ingestion pipeline tests
     ├── test_retrieval.py             # Retrieval preparation, builder, and filter tests
     └── test_retrieval_api.py         # RetrievalService & FastAPI query endpoints tests
-```
-│   └── RETRIEVAL_DATA_CONTRACT.md    # Retrieval-ready data schema specification
-├── src/
-│   ├── api/
-│   │   ├── __init__.py
-│   │   └── app.py                    # FastAPI endpoints & CORS configuration
-│   ├── extraction/
-│   │   ├── __init__.py
-│   │   ├── extractor.py              # LlamaIndex + Groq extractor with fallback logic
-│   │   ├── fallback.py               # Heuristic rule-based regex triple extractor
-│   │   └── prompts.py                # Extraction system prompts & schemas
-│   ├── graph_prep/
-│   │   ├── __init__.py
-│   │   ├── deduplicator.py           # Triple entity resolution & deduplication
-│   │   ├── normalizer.py             # Canonical name, entity type, & relation normalizer
-│   │   ├── pipeline.py               # End-to-end Graph Preparation Pipeline
-│   │   └── validator.py              # Schema & data contract validator
-│   ├── ingestion/
-│   │   ├── __init__.py
-│   │   ├── base.py                   # Abstract base loader class
-│   │   ├── github_loader.py          # GitHub PRs and issues ingestor
-│   │   ├── jira_loader.py            # Jira tickets ingestor
-│   │   ├── slack_loader.py           # Slack messages ingestor
-│   │   └── pipeline.py               # Multi-source ingestion orchestrator
-│   ├── retrieval/
-│   │   ├── __init__.py               # Public exports (models, builder, filter engine, validator, stats)
-│   │   ├── builder.py                # Builds RetrievalRecord list + writes execution metadata
-│   │   ├── filter.py                 # In-memory chronological & entity filter engine
-│   │   ├── models.py                 # RetrievalRecord, TemporalFilter, RetrievalRequest, PipelineExecutionMetadata, RetrievalDataQualityStats
-│   │   ├── stats.py                  # Data quality and coverage statistics engine (RetrievalStatsEngine)
-│   │   └── validator.py              # Post-build consistency validator (RetrievalOutputValidator)
-│   └── schemas/
-│       ├── __init__.py
-│       └── graph.py                  # Pydantic schemas (RawEvent, Triple, ExtractedGraph)
-└── tests/
-    ├── __init__.py
-    ├── test_extraction.py            # Extraction & fallback unit tests
-    ├── test_graph_prep.py            # Validation, normalization & deduplication tests
-    ├── test_ingestion.py             # Loader & ingestion pipeline tests
-    └── test_retrieval.py             # Retrieval preparation, builder, and filter tests
 ```
 
 ---
@@ -408,8 +368,14 @@ cp .env.example .env
 ### Key Environment Variables (`.env`)
 
 ```ini
+# Server & CORS Configuration
+API_HOST=0.0.0.0
+API_PORT=8000
+API_RELOAD=false
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+
 # LLM Provider Configuration
-# Supported options: groq, ollama, openai, mock
+# Supported options: groq, ollama, openai, mock, fallback
 LLM_PROVIDER=groq
 
 # Groq API Configuration
@@ -606,7 +572,7 @@ python -m pytest tests/ -q
 ```
 
 ### Verified Test Status
-- **520 passed** tests across 5 test modules:
+- **615 passed** tests across 5 test modules:
   - `tests/test_ingestion.py` — Ingestion loaders, preprocessing, and normalization
   - `tests/test_extraction.py` — LlamaIndex/Groq extraction and heuristic fallbacks
   - `tests/test_graph_prep.py` — Graph preparation validation, normalization, and deduplication
