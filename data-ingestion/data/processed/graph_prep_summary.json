@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-16T10:11:09.807180+00:00",
+  "generated_at": "2026-09-04T07:39:48.339011+00:00",
   "pipeline_stage": "Week 2 – Graph Preparation (Karkuvel)",
-  "input_file": "data\\processed\\extracted_triples.json",
-  "output_file": "data\\processed\\graph_ready_triples.json",
+  "input_file": "D:\\CG_midreview\\data-ingestion\\data\\processed\\extracted_triples.json",
+  "output_file": "D:\\CG_midreview\\data-ingestion\\data\\processed\\graph_ready_triples.json",
   "statistics": {
     "total_input_triples": 142,
     "valid_triples": 142,

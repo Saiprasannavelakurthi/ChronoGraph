@@ -119,6 +119,21 @@ def stage2_graph_extraction(use_live_groq: bool = False):
         return False, 0, 0, "failed"
 
 
+def stage2b_extraction_accuracy():
+    print_banner("Stage 2B — Extraction Accuracy & Hallucination Audit")
+    try:
+        acc_script = GRAPH_EXTRACTION_DIR / "tests" / "test_extraction_accuracy.py"
+        if str(GRAPH_EXTRACTION_DIR / "tests") not in sys.path:
+            sys.path.insert(0, str(GRAPH_EXTRACTION_DIR / "tests"))
+        from test_extraction_accuracy import run_extraction_accuracy_audit
+        res = run_extraction_accuracy_audit()
+        print(f"  [OK] Grounding Accuracy: {res['grounded']}/{res['total_triples']} ({res['accuracy_pct']:.2f}%)")
+        return res["is_valid"], f"{res['grounded']}/{res['total_triples']} grounded ({res['accuracy_pct']:.2f}%)"
+    except Exception as exc:
+        print(f"  [FAIL] Extraction accuracy audit failed: {exc}")
+        return False, f"Audit failed: {exc}"
+
+
 def stage3_neo4j_temporal():
     print_banner("Stage 3 — Neo4j Temporal Graph (Saiprasanna)")
     
@@ -127,7 +142,8 @@ def stage3_neo4j_temporal():
         sys.executable, "-m", "py_compile",
         "backend/create_graph.py",
         "backend/neo4j_connection.py",
-        "backend/temporal_queries.py"
+        "backend/temporal_queries.py",
+        "backend/graph_audit.py"
     ]
     res_compile = subprocess.run(cmd_compile, cwd=str(NEO4J_DIR), capture_output=True, text=True)
     if res_compile.returncode != 0:
@@ -144,16 +160,16 @@ def stage3_neo4j_temporal():
         print("  [BLOCKED BY EXT SERVICE] Live Neo4j credentials not configured in .env.")
         print("  -> Required for live DB: Set NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD in .env")
         print("  -> Handoff verified: neo4j-temporal/backend/create_graph.py ready to load graph_ready_triples.json")
-        print("  -> Temporal queries verified: neo4j-temporal/backend/temporal_queries.py")
+        print("  -> Temporal queries & Audit verified: neo4j-temporal/backend/graph_audit.py")
         return "BLOCKED", "Neo4j credentials not configured"
         
     cmd = [sys.executable, "backend/create_graph.py"]
     res = subprocess.run(cmd, cwd=str(NEO4J_DIR), capture_output=True, text=True)
     if res.returncode == 0 and "Successfully ingested" in res.stdout:
         print("  [OK] Successfully ingested graph_ready_triples.json into live Neo4j database!")
-        cmd_q = [sys.executable, "backend/temporal_queries.py"]
+        cmd_q = [sys.executable, "backend/graph_audit.py"]
         subprocess.run(cmd_q, cwd=str(NEO4J_DIR), capture_output=False, text=True)
-        return "PASS", "Live Neo4j graph ingested & queried"
+        return "PASS", "Live Neo4j graph ingested & audited"
     else:
         print(f"  [BLOCKED BY EXT SERVICE] Neo4j instance unreachable: {res.stdout.strip() or res.stderr.strip()}")
         return "BLOCKED", "Live Neo4j unreachable"
@@ -243,6 +259,7 @@ def run_all(use_live_groq: bool = False):
     
     s1_ok, s1_count = stage1_data_ingestion()
     s2_ok, s2_entities, s2_rels, s2_mode = stage2_graph_extraction(use_live_groq=use_live_groq)
+    s2b_ok, s2b_msg = stage2b_extraction_accuracy()
     s3_status, s3_msg = stage3_neo4j_temporal()
     s4_ok, s4_nodes, s4_edges = stage4_integration_api()
     s5_ok, s5_msg = stage5_rag_ui()
@@ -250,11 +267,12 @@ def run_all(use_live_groq: bool = False):
     print("\n" + "=" * 70)
     print("   MID-REVIEW INTEGRATION SUMMARY MATRIX")
     print("=" * 70)
-    print(f"  1. Karkuvel     [data-ingestion]   : {'PASS' if s1_ok else 'FAIL'} ({s1_count} graph-ready triples)")
-    print(f"  2. Aathi        [graph-extraction] : {'PASS' if s2_ok else 'FAIL'} ({s2_entities} entities, {s2_rels} rels via {s2_mode})")
-    print(f"  3. Saiprasanna  [neo4j-temporal]   : {s3_status} ({s3_msg})")
-    print(f"  4. Integration  [integration-api]  : {'PASS' if s4_ok else 'FAIL'} ({s4_nodes} nodes, {s4_edges} edges)")
-    print(f"  5. Nagaraj      [rag-ui]           : {'PASS' if s5_ok else 'FAIL'} ({s5_msg})")
+    print(f"  1. Data Ingestion [data-ingestion]   : {'PASS' if s1_ok else 'FAIL'} ({s1_count} graph-ready triples)")
+    print(f"  2. Graph Extraction [graph-extract]  : {'PASS' if s2_ok else 'FAIL'} ({s2_entities} entities, {s2_rels} rels via {s2_mode})")
+    print(f"  3. Accuracy Audit  [extraction-acc]  : {'PASS' if s2b_ok else 'FAIL'} ({s2b_msg})")
+    print(f"  4. Neo4j Temporal  [neo4j-temporal]   : {s3_status} ({s3_msg})")
+    print(f"  5. Integration API [integration-api] : {'PASS' if s4_ok else 'FAIL'} ({s4_nodes} nodes, {s4_edges} edges)")
+    print(f"  6. Frontend UI     [rag-ui]          : {'PASS' if s5_ok else 'FAIL'} ({s5_msg})")
     print("=" * 70)
     print("  All four member folders remain separate and modular.")
     print("  Automated pipeline verification complete.")
@@ -270,3 +288,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     run_all(use_live_groq=args.live_groq)
+
